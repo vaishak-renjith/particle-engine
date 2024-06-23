@@ -43,11 +43,13 @@ int main() {
                   quit = true;
                   break;
                 case SDL_MOUSEBUTTONDOWN:
-                  Engine::spawnSand = true;
+                  Engine::spawnParticles = true;
                   break;
                 case SDL_MOUSEBUTTONUP:
-                  Engine::spawnSand = false;
+                  Engine::spawnParticles = false;
                   break;
+                case SDL_KEYDOWN:
+                  Engine::HandleKeypress(e.key);
             }
         }
 

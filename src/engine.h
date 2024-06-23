@@ -3,7 +3,9 @@
 #include <SDL2/SDL.h>
 
 namespace Engine {
-    extern bool spawnSand;
+    extern int currentParticle;
+    extern bool spawnParticles;
 
+    void HandleKeypress(SDL_KeyboardEvent e);
     void Loop();
 }
