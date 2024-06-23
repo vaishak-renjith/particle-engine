@@ -26,7 +26,7 @@ void Engine::SetVel(int xi, int yi, int xvel, int yvel) {
 
     int pos = xi + yi*GRID_WIDTH;
 
-    velocity[pos] = xvel<<16 | yvel;
+    velocity[pos] = yvel<<16 | xvel;
 }
 
 void Engine::HandleKeypress(SDL_KeyboardEvent e) {
@@ -107,20 +107,23 @@ void Engine::Loop() {
 
     for (int xi = GRID_WIDTH-1; xi >= 0; xi--) {
         for (int yi = GRID_HEIGHT-1; yi >= 0; yi--) {
+            int xvel = GetVel(false, xi, yi);
+            int yvel = GetVel(true, xi, yi);
+
             switch (Renderer::GetPixelAt(Renderer::ogPixels, xi, yi)) {
               case WATER:
-                if (AttemptMove(xi, yi, +0, +1, VOID, WATER)    || 
-                    AttemptMove(xi, yi, -1, +1, VOID, WATER)    ||
-                    AttemptMove(xi, yi, +1, +1, VOID, WATER)    ||
-                    AttemptMove(xi, yi, +1, +0, VOID, WATER)    ||
-                    AttemptMove(xi, yi, -1, +0, VOID, WATER))   {}
+                if (AttemptMove(xi, yi, +0, +yvel, VOID, WATER)    || 
+                    AttemptMove(xi, yi, -1, +yvel, VOID, WATER)    ||
+                    AttemptMove(xi, yi, +1, +yvel, VOID, WATER)    ||
+                    AttemptMove(xi, yi, +1, +0, VOID, WATER)       ||
+                    AttemptMove(xi, yi, -1, +0, VOID, WATER))      {}
 
                 break;
 
               case SAND:
-                if (AttemptMove(xi, yi, +0, +1, VOID, SAND)    || 
-                    AttemptMove(xi, yi, -1, +1, VOID, SAND)    ||
-                    AttemptMove(xi, yi, +1, +1, VOID, SAND))   {}
+                if (AttemptMove(xi, yi, +0, +yvel, VOID, SAND)    || 
+                    AttemptMove(xi, yi, -1, +yvel, VOID, SAND)    ||
+                    AttemptMove(xi, yi, +1, +yvel, VOID, SAND))   {}
 
                 break;
             }
