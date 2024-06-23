@@ -84,38 +84,48 @@ bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int 
     // find most aggressive placement
     int aggXi = xi, aggYi = yi;
 
-    std::cout << yi+yoff << std::endl;
-    std::cout << yi << std::endl;
-
     for (int funcY = yi+yoff; funcY > yi; funcY--) {
         int funcX = (double)xoff/yoff * (funcY - yi) + xi;
 
         int closestX = ClosestX(funcX*PIXEL_SIZE)/PIXEL_SIZE;
         int closestY = ClosestY(funcY*PIXEL_SIZE)/PIXEL_SIZE;
 
-        std::cout << "legal @ " << closestX << " " << closestY << std::endl;
+        // std::cout << "legal @ " << closestX << " " << closestY << std::endl;
         if (!Legal(closestX, closestY)) {
             if (funcY == yi+1) return false;
             continue;
         }
-        std::cout << "condition" << std::endl;
+        // std::cout << "condition" << std::endl;
         int existingParticle = Renderer::GetPixelAt(Renderer::newPixels, closestX, closestY);
-        if (existingParticle != condition) continue;
+        if (existingParticle != condition) {
+            if (funcY == yi+1) return false;
+            continue;
+        }
 
 
-        std::cout << "agg set" << std::endl;
+        // std::cout << "agg set" << std::endl;
         aggXi = closestX;
         aggYi = closestY;
+        
+        // std::cout << "offsets: " << xoff << " " << yoff << std::endl;
 
         // skip if nothing is collided with
-        if (funcY == yi+yoff) continue;
-        // otherwise, kill horizontal movement
-        SetVel(xi, yi, 0, GetVel(true, xi, yi));
+        if (funcY == yi+yoff) break;
+
+        // otherwise, kill movement
+        if (xoff == 0) {
+            SetVel(xi, yi, 0, 0);
+        } else {
+            SetVel(xi, yi, 0, GetVel(true, xi, yi));
+        }
+        break;
     }
 
     // move particle
-    Renderer::SetPixelAt(Renderer::newPixels, aggXi, aggYi, type);
     Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
+    Renderer::SetPixelAt(Renderer::newPixels, aggXi, aggYi, type);
+
+    std::cout << "NEW POSITION: " << aggXi << " " << aggYi << std::endl;
 
     int xvel = GetVel(false, xi, yi);
     int yvel = GetVel(true, xi, yi);
@@ -128,6 +138,11 @@ bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int 
 void Engine::Loop() {
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
+
+    mouseX = std::max(0, mouseX);
+    mouseX = std::min(mouseX, SCREEN_WIDTH-1);
+    mouseY = std::max(0, mouseY);
+    mouseY = std::min(mouseY, SCREEN_HEIGHT-1);
 
     if (spawnParticles) {
         // snap x to closest on-grid point
@@ -154,6 +169,8 @@ void Engine::Loop() {
                     AttemptMove(xi, yi, +1, yvel, VOID, WATER)    ||
                     AttemptMove(xi, yi, +1, 0, VOID, WATER)       ||
                     AttemptMove(xi, yi, -1, 0, VOID, WATER))      {}
+
+                    std::cout << "Move Failed!" << std::endl;
                 } else {
                     AttemptMove(xi, yi, xvel, yvel, VOID, WATER);
                 }
@@ -162,9 +179,11 @@ void Engine::Loop() {
 
               case SAND:
                 if (xvel == 0) {
-                if (AttemptMove(xi, yi, +0, yvel, VOID, SAND)    || 
+                if (AttemptMove(xi, yi, +0, yvel, VOID, SAND)    ||
                     AttemptMove(xi, yi, -1, yvel, VOID, SAND)    ||
                     AttemptMove(xi, yi, +1, yvel, VOID, SAND))   {}
+
+                    std::cout << "Move Failed!" << std::endl;
                 } else {
                     AttemptMove(xi, yi, xvel, yvel, VOID, SAND);
                 }
