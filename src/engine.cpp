@@ -80,52 +80,65 @@ bool Engine::Legal(int xi, int yi) {
     return l && r && t && b;
 }
 
+
+void FindMostAggressiveMove(int &aggXi, int &aggYi, int mostIdx, int leastIdx, bool isHorizontalSearch,
+                                                                 int xi, int yi, int xoff, int yoff, int condition) {
+    int funcX, funcY;
+    int closestX, closestY;
+    int existingParticle;
+
+    if (mostIdx > leastIdx) {
+        for (; mostIdx > leastIdx; mostIdx--) {
+            run_checks:
+            funcX = mostIdx, funcY = mostIdx;
+
+            if (isHorizontalSearch)
+                funcY = (double)yoff/xoff * (funcX - xi) + yi;
+            else
+                funcX = (double)xoff/yoff * (funcY - yi) + xi;
+
+            closestX = Engine::ClosestX(funcX*PIXEL_SIZE)/PIXEL_SIZE;
+            closestY = Engine::ClosestY(funcY*PIXEL_SIZE)/PIXEL_SIZE;
+            if (!Engine::Legal(closestX, closestY)) continue;
+
+
+            existingParticle = Renderer::GetPixelAt(Renderer::newPixels, closestX, closestY);
+            if (existingParticle != condition) continue;
+
+
+            if (std::pow(closestX, 2) + std::pow(closestY, 2) > std::pow(aggXi, 2) + std::pow(aggYi, 2)) {
+                aggXi = closestX;
+                aggYi = closestY;
+            }
+            break;
+        }
+    } else {
+        for (; mostIdx < leastIdx; mostIdx++) {
+            goto run_checks;
+        }
+    }
+}
+
 bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type) {
     // find most aggressive placement
     int aggXi = xi, aggYi = yi;
+    FindMostAggressiveMove(aggXi, aggYi, xi+xoff, xi, true, xi, yi, xoff, yoff, condition);
+    FindMostAggressiveMove(aggXi, aggYi, yi+yoff, yi, true, xi, yi, xoff, yoff, condition);
 
-    for (int funcY = yi+yoff; funcY > yi; funcY--) {
-        int funcX = (double)xoff/yoff * (funcY - yi) + xi;
-
-        int closestX = ClosestX(funcX*PIXEL_SIZE)/PIXEL_SIZE;
-        int closestY = ClosestY(funcY*PIXEL_SIZE)/PIXEL_SIZE;
-
-        // std::cout << "legal @ " << closestX << " " << closestY << std::endl;
-        if (!Legal(closestX, closestY)) {
-            if (funcY == yi+1) return false;
-            continue;
-        }
-        // std::cout << "condition" << std::endl;
-        int existingParticle = Renderer::GetPixelAt(Renderer::newPixels, closestX, closestY);
-        if (existingParticle != condition) {
-            if (funcY == yi+1) return false;
-            continue;
-        }
-
-
-        // std::cout << "agg set" << std::endl;
-        aggXi = closestX;
-        aggYi = closestY;
-        
-        // std::cout << "offsets: " << xoff << " " << yoff << std::endl;
-
-        // skip if nothing is collided with
-        if (funcY == yi+yoff) break;
-
-        // otherwise, kill movement
+    // if most aggressive position is starting position, try something else
+    if (aggXi == xi && aggYi == yi) return false;
+    // skip if nothing is collided with, otherwise kill movement
+    if (!(xi+xoff == aggXi && yi+yoff == aggYi)) {
         if (xoff == 0) {
             SetVel(xi, yi, 0, 0);
         } else {
             SetVel(xi, yi, 0, GetVel(true, xi, yi));
         }
-        break;
     }
 
     // move particle
     Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
     Renderer::SetPixelAt(Renderer::newPixels, aggXi, aggYi, type);
-
-    std::cout << "NEW POSITION: " << aggXi << " " << aggYi << std::endl;
 
     int xvel = GetVel(false, xi, yi);
     int yvel = GetVel(true, xi, yi);
@@ -165,12 +178,10 @@ void Engine::Loop() {
               case WATER:
                 if (xvel == 0) {
                 if (AttemptMove(xi, yi, +0, yvel, VOID, WATER)    || 
-                    AttemptMove(xi, yi, -1, yvel, VOID, WATER)    ||
-                    AttemptMove(xi, yi, +1, yvel, VOID, WATER)    ||
+                    AttemptMove(xi, yi, -1, 1, VOID, WATER)    ||
+                    AttemptMove(xi, yi, +1, 1, VOID, WATER)    ||
                     AttemptMove(xi, yi, +1, 0, VOID, WATER)       ||
                     AttemptMove(xi, yi, -1, 0, VOID, WATER))      {}
-
-                    std::cout << "Move Failed!" << std::endl;
                 } else {
                     AttemptMove(xi, yi, xvel, yvel, VOID, WATER);
                 }
@@ -180,10 +191,8 @@ void Engine::Loop() {
               case SAND:
                 if (xvel == 0) {
                 if (AttemptMove(xi, yi, +0, yvel, VOID, SAND)    ||
-                    AttemptMove(xi, yi, -1, yvel, VOID, SAND)    ||
-                    AttemptMove(xi, yi, +1, yvel, VOID, SAND))   {}
-
-                    std::cout << "Move Failed!" << std::endl;
+                    AttemptMove(xi, yi, -1, 1, VOID, SAND)    ||
+                    AttemptMove(xi, yi, +1, 1, VOID, SAND))   {}
                 } else {
                     AttemptMove(xi, yi, xvel, yvel, VOID, SAND);
                 }

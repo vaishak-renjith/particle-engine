@@ -28,4 +28,4 @@ namespace Engine {
     void HandleKeypress(SDL_KeyboardEvent e);
 }
 
-#define GRAVITY 2
+#define GRAVITY 10
