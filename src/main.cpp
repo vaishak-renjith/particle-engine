@@ -1,11 +1,11 @@
 #include <cmath>
+#include <cstddef>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <iostream>
 #include <chrono>
 
-// 2d array (old, updated)
-// logic
+// CONSTANTS
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 800;
 const int PIXEL_SIZE = 10;
@@ -18,6 +18,22 @@ int ogPixels[SCREEN_WIDTH * SCREEN_HEIGHT];
 int newPixels[SCREEN_WIDTH * SCREEN_HEIGHT];
 
 SDL_Texture* buffer = nullptr;
+
+
+// FUNCTIONS
+int getPixelAt(int* arr, int x, int y) {
+    size_t pos = x + y*SCREEN_WIDTH;
+    return arr[pos];
+}
+
+void setPixelAt(int* arr, int x, int y, int color) {
+    for (int ix = 0; ix < PIXEL_SIZE; ix++) {
+        for (int iy = 0; iy < PIXEL_SIZE; iy++) {
+            arr[x + y*SCREEN_WIDTH + ix + iy*SCREEN_WIDTH] = color;
+        }
+    }
+}
+
 
 bool init() {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
@@ -43,9 +59,11 @@ bool init() {
     }
 
     // fill texture to be black
-    for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-        ogPixels[i] = 0x000000FF;
-        newPixels[i] = 0x000000FF;
+    for (int x = 0; x < SCREEN_WIDTH; x += PIXEL_SIZE) {
+        for (int y = 0; y < SCREEN_HEIGHT; y += PIXEL_SIZE) {
+            setPixelAt(ogPixels, x, y, 0x000000FF);
+            setPixelAt(newPixels, x, y, 0x000000FF);
+        }
     }
 
     return true;
@@ -111,13 +129,9 @@ int main() {
                 y += PIXEL_SIZE - topDist;
             }
 
-            int p = x + y*SCREEN_WIDTH;
-
-            for (int pw = 0; pw < PIXEL_SIZE; pw++) {
-                for (int ph = 0; ph < PIXEL_SIZE; ph++) {
-                    newPixels[p + pw + (ph+1)*SCREEN_WIDTH] = 0x00FFFFFF;
-                }
-            }
+            std::cout << "pixel set at " << x << " " << y << std::endl;
+            setPixelAt(ogPixels, x, y, 0x00FFFFFF);
+            setPixelAt(newPixels, x, y, 0x00FFFFFF);
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -126,31 +140,29 @@ int main() {
         if (diff < delay) continue;
         last_update = now;
 
-        int pitch = SCREEN_WIDTH * sizeof(int); // pitch in bytes
+        for (int x = 0; x < SCREEN_WIDTH; x += PIXEL_SIZE) {
+            for (int y = 0; y < SCREEN_HEIGHT; y += PIXEL_SIZE) {
+                switch (getPixelAt(ogPixels, x, y)) {
+                  case 0x00FFFFFF: // sand
+                    std::cout << "switch passed" << std::endl;
+                    if (y + PIXEL_SIZE >= SCREEN_HEIGHT) continue; // OOB check
+                    std::cout << "oob passed" << std::endl;
 
-
-        for (int p = 0; p < SCREEN_WIDTH*SCREEN_HEIGHT; p++) {
-            if (p % PIXEL_SIZE != 0) continue;
-            if ((p / SCREEN_WIDTH) % PIXEL_SIZE != 0) continue;
-
-            switch (ogPixels[p]) {
-              case 0x00FFFFFF: // sand
-                // check if empty below
-                if (p+SCREEN_WIDTH >= SCREEN_WIDTH*SCREEN_HEIGHT) continue; // OOB check
-                if (ogPixels[p+SCREEN_WIDTH] == 0x000000FF) { // check if empty below
-                    // update new pixels
-                    for (int pw = 0; pw < PIXEL_SIZE; pw++) {
-                        for (int ph = 0; ph < PIXEL_SIZE; ph++) {
-                        }
+                    std::cout << getPixelAt(ogPixels, x, y+1) << std::endl;
+                                                                   
+                    if (getPixelAt(ogPixels, x, y+PIXEL_SIZE) == 0x000000FF) { // check if empty below
+                        // update new pixels
+                        std::cout << "sand fall" << std::endl;
+                        setPixelAt(newPixels, x, y+PIXEL_SIZE, 0x00FFFFFF);
+                        setPixelAt(newPixels, x, y, 0x000000FF);
                     }
+
+                    break;
                 }
-
-                break;
-
-              case 0x000000FF: // blank
-                break;
             }
         }
+
+        int pitch = SCREEN_WIDTH * sizeof(int); // pitch in bytes
 
         int* pixels;
         if (SDL_LockTexture(buffer, NULL, (void**)&pixels, &pitch) == 0) {
