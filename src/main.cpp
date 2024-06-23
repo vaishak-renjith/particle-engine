@@ -65,8 +65,8 @@ int main() {
     bool quit = false;
     SDL_Event e;
 
-    const auto start = std::chrono::steady_clock::now();
-    long last_second = 0;
+    const std::chrono::duration<double> delay{1};
+    auto last_update = std::chrono::steady_clock::now();
 
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
@@ -76,36 +76,32 @@ int main() {
         }
 
         const auto now = std::chrono::steady_clock::now();
-        const std::chrono::duration<double> diff = now - start;
+        const std::chrono::duration<double> diff = now - last_update;
 
-        std::cout << diff.count() << std::endl;
+        if (diff < delay) continue;
+        last_update = now;
 
-        long sec_count = static_cast <int> (std::floor(diff.count()));
+        int b, g, r, a;
+        b = rand()%255 << 24;
+        g = rand()%255 << 16;
+        r = rand()%255 << 8;
+        a = rand()%255;
 
-        if (sec_count != last_second) {
-            if (sec_count % 2 == 0) {
-                for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-                    ogPixels[i] = 0x0000FFFF;
-                }
-            }
-            else {
-                for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-                    ogPixels[i] = 0x00FF00FF;
-                }
-            }
-
-            int pitch = SCREEN_WIDTH * sizeof(int); // pitch in bytes
-
-            int* pixels;
-            if (SDL_LockTexture(buffer, NULL, (void**)&pixels, &pitch) == 0) {
-                memcpy(pixels, ogPixels, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(int));
-                SDL_UnlockTexture(buffer);
-            }
-
-            SDL_RenderClear(renderer); // Clear the renderer with the current drawing color
-            SDL_RenderCopy(renderer, buffer, NULL, NULL);
-            SDL_RenderPresent(renderer);
+        for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+            ogPixels[i] = b|g|r|a;
         }
+
+        int pitch = SCREEN_WIDTH * sizeof(int); // pitch in bytes
+
+        int* pixels;
+        if (SDL_LockTexture(buffer, NULL, (void**)&pixels, &pitch) == 0) {
+            memcpy(pixels, ogPixels, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(int));
+            SDL_UnlockTexture(buffer);
+        }
+
+        SDL_RenderClear(renderer); // Clear the renderer with the current drawing color
+        SDL_RenderCopy(renderer, buffer, NULL, NULL);
+        SDL_RenderPresent(renderer);
     }
 
     close();
