@@ -2,15 +2,32 @@
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_keycode.h>
 
+#include <cassert>
+#include <iostream>
+
 #include "engine.h"
 #include "renderer.h"
 #include "definitions.h"
 
-#include <iostream>
-
 bool Engine::spawnParticles = false;
 int Engine::currentParticle = SAND;
+int Engine::velocity[GRID_WIDTH * GRID_HEIGHT] = {0};
 
+
+int Engine::GetVel(bool vertical, int xi, int yi) {
+    int pos = xi + yi*GRID_WIDTH;
+    int velPacked = velocity[pos];
+
+    return (!vertical) ? (velPacked & 0x0000FFFF) : (velPacked >> 16);
+}
+
+void Engine::SetVel(int xi, int yi, int xvel, int yvel) {
+    assert(xvel >= -pow(2, 15) && xvel <= pow(2, 15)-1 && yvel >= -pow(2, 15) && xvel <= pow(2, 15)-1);
+
+    int pos = xi + yi*GRID_WIDTH;
+
+    velocity[pos] = xvel<<16 | yvel;
+}
 
 void Engine::HandleKeypress(SDL_KeyboardEvent e) {
     switch (e.keysym.sym) {
@@ -39,6 +56,25 @@ bool Engine::Legal(int xi, int yi) {
     return l && r && t && b;
 }
 
+bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type) {
+    if (!Legal(xi+xoff, yi+yoff)) return false;
+
+    int existingParticle = Renderer::GetPixelAt(Renderer::newPixels, xi+xoff, yi+yoff);
+
+    if (existingParticle != condition) return false;
+
+    // move particle
+    Renderer::SetPixelAt(Renderer::newPixels, xi+xoff, yi+yoff, type);
+    Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
+
+    int xvel = GetVel(false, xi, yi);
+    int yvel = GetVel(true, xi, yi);
+    SetVel(xi+xoff, yi+yoff, xvel, yvel);
+    SetVel(xi, yi, 0, 0);
+
+    return true;
+}
+
 void Engine::Loop() {
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
@@ -65,6 +101,7 @@ void Engine::Loop() {
         // std::cout << "pixel Renderer::Set at " << x << " " << y << std::endl;
         Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, currentParticle);
         Renderer::SetPixelAt(Renderer::newPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, currentParticle);
+        SetVel(mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, 0, GRAVITY);
     }
 
 
@@ -72,46 +109,18 @@ void Engine::Loop() {
         for (int yi = GRID_HEIGHT-1; yi >= 0; yi--) {
             switch (Renderer::GetPixelAt(Renderer::ogPixels, xi, yi)) {
               case WATER:
-                Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
-
-                if (Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::newPixels, xi, yi+1) == VOID)
-                    Renderer::SetPixelAt(Renderer::newPixels, xi, yi+1, WATER);
-
-                else if (Legal(xi-1, yi+1) && Renderer::GetPixelAt(Renderer::newPixels, xi-1, yi+1) == VOID)
-                    Renderer::SetPixelAt(Renderer::newPixels, xi-1, yi+1, WATER);
-
-                else if (Legal(xi+1, yi+1) && Renderer::GetPixelAt(Renderer::newPixels, xi+1, yi+1) == VOID)
-                    Renderer::SetPixelAt(Renderer::newPixels, xi+1, yi+1, WATER);
-
-                else if (Legal(xi+1, yi) && Renderer::GetPixelAt(Renderer::newPixels, xi+1, yi) == VOID) {
-                    std::cout << "void at " << xi << " " << yi << std::endl;
-                    Renderer::SetPixelAt(Renderer::newPixels, xi+1, yi, WATER);
-                }
-
-                else if (Legal(xi-1, yi) && Renderer::GetPixelAt(Renderer::newPixels, xi-1, yi) == VOID)
-                    Renderer::SetPixelAt(Renderer::newPixels, xi-1, yi, WATER);
-
-                else
-                    Renderer::SetPixelAt(Renderer::newPixels, xi, yi, WATER);
+                if (AttemptMove(xi, yi, +0, +1, VOID, WATER)    || 
+                    AttemptMove(xi, yi, -1, +1, VOID, WATER)    ||
+                    AttemptMove(xi, yi, +1, +1, VOID, WATER)    ||
+                    AttemptMove(xi, yi, +1, +0, VOID, WATER)    ||
+                    AttemptMove(xi, yi, -1, +0, VOID, WATER))   {}
 
                 break;
 
               case SAND:
-                if (!Legal(xi, yi+1)) continue; // OOB check
-                                                               
-                Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
-
-                if (Renderer::GetPixelAt(Renderer::newPixels, xi, yi+1) == VOID)
-                    Renderer::SetPixelAt(Renderer::newPixels, xi, yi+1, SAND);
-
-                else if (Renderer::GetPixelAt(Renderer::newPixels, xi-1, yi+1) == VOID)
-                    Renderer::SetPixelAt(Renderer::newPixels, xi-1, yi+1, SAND);
-
-                else if (Renderer::GetPixelAt(Renderer::newPixels, xi+1, yi+1) == VOID)
-                    Renderer::SetPixelAt(Renderer::newPixels, xi+1, yi+1, SAND);
-
-                else
-                    Renderer::SetPixelAt(Renderer::newPixels, xi, yi, SAND);
+                if (AttemptMove(xi, yi, +0, +1, VOID, SAND)    || 
+                    AttemptMove(xi, yi, -1, +1, VOID, SAND)    ||
+                    AttemptMove(xi, yi, +1, +1, VOID, SAND))   {}
 
                 break;
             }

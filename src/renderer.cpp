@@ -52,7 +52,6 @@ int Renderer::IdxToCoord(int idx) {
     return idx * PIXEL_SIZE;
 }
 
-// these should really be size_t
 int Renderer::GetPixelAt(int* arr, int xi, int yi) {
     int x = IdxToCoord(xi);
     int y = IdxToCoord(yi);

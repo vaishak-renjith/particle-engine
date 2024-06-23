@@ -25,3 +25,8 @@ namespace Renderer {
 
     void Render();
 }
+
+// Particle macros
+#define VOID (int)0x000000FF
+#define SAND (int)0x00FFFFFF
+#define WATER (int)0xFF0000FF
