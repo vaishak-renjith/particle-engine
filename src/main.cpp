@@ -21,15 +21,25 @@ SDL_Texture* buffer = nullptr;
 
 
 // FUNCTIONS
-int getPixelAt(int* arr, int x, int y) {
+int idxToCoord(int idx) {
+    return idx * PIXEL_SIZE;
+}
+
+int getPixelAt(int* arr, int xi, int yi) {
+    int x = idxToCoord(xi);
+    int y = idxToCoord(yi);
+
     size_t pos = x + y*SCREEN_WIDTH;
     return arr[pos];
 }
 
-void setPixelAt(int* arr, int x, int y, int color) {
-    for (int ix = 0; ix < PIXEL_SIZE; ix++) {
-        for (int iy = 0; iy < PIXEL_SIZE; iy++) {
-            arr[x + y*SCREEN_WIDTH + ix + iy*SCREEN_WIDTH] = color;
+void setPixelAt(int* arr, int xi, int yi, int color) {
+    int x = idxToCoord(xi);
+    int y = idxToCoord(yi);
+
+    for (int xit = 0; xit < PIXEL_SIZE; xit++) {
+        for (int yit = 0; yit < PIXEL_SIZE; yit++) {
+            arr[x + y*SCREEN_WIDTH + xit + yit*SCREEN_WIDTH] = color;
         }
     }
 }
@@ -59,10 +69,10 @@ bool init() {
     }
 
     // fill texture to be black
-    for (int x = 0; x < SCREEN_WIDTH; x += PIXEL_SIZE) {
-        for (int y = 0; y < SCREEN_HEIGHT; y += PIXEL_SIZE) {
-            setPixelAt(ogPixels, x, y, 0x000000FF);
-            setPixelAt(newPixels, x, y, 0x000000FF);
+    for (int xi = 0; xi < SCREEN_WIDTH/PIXEL_SIZE; xi++) {
+        for (int yi = 0; yi < SCREEN_HEIGHT/PIXEL_SIZE; yi++) {
+            setPixelAt(ogPixels, xi, yi, 0x000000FF);
+            setPixelAt(newPixels, xi, yi, 0x000000FF);
         }
     }
 
@@ -87,7 +97,7 @@ int main() {
     bool quit = false;
     SDL_Event e;
 
-    const std::chrono::duration<double> delay{0.5};
+    const std::chrono::duration<double> delay{0.1};
     auto last_update = std::chrono::steady_clock::now();
 
     bool spawnSand = false;
@@ -107,31 +117,31 @@ int main() {
             }
         }
 
-        int x, y;
-        SDL_GetMouseState(&x, &y);
+        int mouseX, mouseY;
+        SDL_GetMouseState(&mouseX, &mouseY);
 
         if (spawnSand) {
             // snap x to closest on-grid point
-            int leftDist = x%PIXEL_SIZE;
+            int leftDist = mouseX%PIXEL_SIZE;
 
             if (leftDist < PIXEL_SIZE - leftDist) {
-                x -= leftDist;
+                mouseX -= leftDist;
             } else {
-                x += PIXEL_SIZE - leftDist;
+                mouseX += PIXEL_SIZE - leftDist;
             }
 
             // snap y to closest on-grid point
-            int topDist = y - (y/PIXEL_SIZE*PIXEL_SIZE);
+            int topDist = mouseY - (mouseY/PIXEL_SIZE*PIXEL_SIZE);
 
             if (topDist < PIXEL_SIZE - topDist) {
-                y -= topDist;
+                mouseY -= topDist;
             } else {
-                y += PIXEL_SIZE - topDist;
+                mouseY += PIXEL_SIZE - topDist;
             }
 
-            std::cout << "pixel set at " << x << " " << y << std::endl;
-            setPixelAt(ogPixels, x, y, 0x00FFFFFF);
-            setPixelAt(newPixels, x, y, 0x00FFFFFF);
+            // std::cout << "pixel set at " << x << " " << y << std::endl;
+            setPixelAt(ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, 0x00FFFFFF);
+            setPixelAt(newPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, 0x00FFFFFF);
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -140,22 +150,25 @@ int main() {
         if (diff < delay) continue;
         last_update = now;
 
-        for (int x = 0; x < SCREEN_WIDTH; x += PIXEL_SIZE) {
-            for (int y = 0; y < SCREEN_HEIGHT; y += PIXEL_SIZE) {
-                switch (getPixelAt(ogPixels, x, y)) {
+        for (int xi = 0; xi < SCREEN_WIDTH / PIXEL_SIZE; xi++) {
+            for (int yi = 0; yi < SCREEN_HEIGHT / PIXEL_SIZE; yi++) {
+                switch (getPixelAt(ogPixels, xi, yi)) {
                   case 0x00FFFFFF: // sand
-                    std::cout << "switch passed" << std::endl;
-                    if (y + PIXEL_SIZE >= SCREEN_HEIGHT) continue; // OOB check
-                    std::cout << "oob passed" << std::endl;
-
-                    std::cout << getPixelAt(ogPixels, x, y+1) << std::endl;
+                    if (yi + 1 >= SCREEN_HEIGHT / PIXEL_SIZE) continue; // OOB check
                                                                    
-                    if (getPixelAt(ogPixels, x, y+PIXEL_SIZE) == 0x000000FF) { // check if empty below
-                        // update new pixels
-                        std::cout << "sand fall" << std::endl;
-                        setPixelAt(newPixels, x, y+PIXEL_SIZE, 0x00FFFFFF);
-                        setPixelAt(newPixels, x, y, 0x000000FF);
-                    }
+                    setPixelAt(newPixels, xi, yi, 0x000000FF);
+
+                    if (getPixelAt(ogPixels, xi, yi+1) == 0x000000FF)
+                        setPixelAt(newPixels, xi, yi+1, 0x00FFFFFF);
+
+                    else if (getPixelAt(ogPixels, xi-1, yi+1) == 0x000000FF)
+                        setPixelAt(newPixels, xi-1, yi+1, 0x00FFFFFF);
+
+                    else if (getPixelAt(ogPixels, xi+1, yi+1) == 0x000000FF)
+                        setPixelAt(newPixels, xi+1, yi+1, 0x00FFFFFF);
+
+                    else
+                        setPixelAt(newPixels, xi, yi, 0x00FFFFFF);
 
                     break;
                 }
