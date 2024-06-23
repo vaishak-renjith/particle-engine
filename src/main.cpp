@@ -1,3 +1,4 @@
+#include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_timer.h>
 #include <cmath>
 #define SDL_MAIN_HANDLED
@@ -44,6 +45,12 @@ bool init() {
         return false;
     }
 
+    // fill texture to be black
+    for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+        ogPixels[i] = 0x000000FF;
+        newPixels[i] = 0x000000FF;
+    }
+
     return true;
 }
 
@@ -65,14 +72,31 @@ int main() {
     bool quit = false;
     SDL_Event e;
 
-    const std::chrono::duration<double> delay{1};
+    const std::chrono::duration<double> delay{0.1};
     auto last_update = std::chrono::steady_clock::now();
+
+    bool spawnSand = false;
 
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
-            if (e.type == SDL_QUIT) {
-                quit = true;
+            switch (e.type) {
+                case (SDL_QUIT):
+                  quit = true;
+                  break;
+                case SDL_MOUSEBUTTONDOWN:
+                  spawnSand = true;
+                  break;
+                case SDL_MOUSEBUTTONUP:
+                  spawnSand = false;
+                  break;
             }
+        }
+
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+
+        if (spawnSand) {
+            ogPixels[y*SCREEN_WIDTH+x] = 0x00FFFFFF;
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -81,21 +105,25 @@ int main() {
         if (diff < delay) continue;
         last_update = now;
 
-        int b, g, r, a;
-        b = rand()%255 << 24;
-        g = rand()%255 << 16;
-        r = rand()%255 << 8;
-        a = rand()%255;
-
-        for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-            ogPixels[i] = b|g|r|a;
-        }
-
         int pitch = SCREEN_WIDTH * sizeof(int); // pitch in bytes
+
+
+        for (int p = 0; p < SCREEN_WIDTH*SCREEN_HEIGHT; p++) {
+            if (ogPixels[p] != 0x00FFFFFF) continue;
+
+            // check if empty below
+            if (p+SCREEN_WIDTH < SCREEN_WIDTH*SCREEN_HEIGHT) {
+                std::cout << ogPixels[p+SCREEN_WIDTH] << std::endl;
+                if (ogPixels[p+SCREEN_WIDTH] == 0x000000FF) {
+                    newPixels[p+SCREEN_WIDTH] = 0x00FFFFFF;
+                }
+            }
+        }
 
         int* pixels;
         if (SDL_LockTexture(buffer, NULL, (void**)&pixels, &pitch) == 0) {
-            memcpy(pixels, ogPixels, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(int));
+            memcpy(pixels, newPixels, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(int));
+            memcpy(ogPixels, newPixels, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(int));
             SDL_UnlockTexture(buffer);
         }
 
