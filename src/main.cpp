@@ -5,10 +5,16 @@
 #include <iostream>
 #include <chrono>
 
+#include "particles.h"
+
 // CONSTANTS
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 800;
-const int PIXEL_SIZE = 10;
+
+const int PIXEL_SIZE = 5;
+
+const int GRID_WIDTH = SCREEN_WIDTH / PIXEL_SIZE;
+const int GRID_HEIGHT = SCREEN_HEIGHT / PIXEL_SIZE;
 
 SDL_Window* window;
 SDL_Renderer* renderer;
@@ -44,7 +50,6 @@ void setPixelAt(int* arr, int xi, int yi, int color) {
     }
 }
 
-
 bool init() {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
         return false;
@@ -69,10 +74,10 @@ bool init() {
     }
 
     // fill texture to be black
-    for (int xi = 0; xi < SCREEN_WIDTH/PIXEL_SIZE; xi++) {
-        for (int yi = 0; yi < SCREEN_HEIGHT/PIXEL_SIZE; yi++) {
-            setPixelAt(ogPixels, xi, yi, 0x000000FF);
-            setPixelAt(newPixels, xi, yi, 0x000000FF);
+    for (int xi = 0; xi < GRID_WIDTH; xi++) {
+        for (int yi = 0; yi < GRID_HEIGHT; yi++) {
+            setPixelAt(ogPixels, xi, yi, VOID);
+            setPixelAt(newPixels, xi, yi, VOID);
         }
     }
 
@@ -97,7 +102,7 @@ int main() {
     bool quit = false;
     SDL_Event e;
 
-    const std::chrono::duration<double> delay{0.1};
+    const std::chrono::duration<double> delay{0.01};
     auto last_update = std::chrono::steady_clock::now();
 
     bool spawnSand = false;
@@ -140,8 +145,8 @@ int main() {
             }
 
             // std::cout << "pixel set at " << x << " " << y << std::endl;
-            setPixelAt(ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, 0x00FFFFFF);
-            setPixelAt(newPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, 0x00FFFFFF);
+            setPixelAt(ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, SAND);
+            setPixelAt(newPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, SAND);
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -150,25 +155,25 @@ int main() {
         if (diff < delay) continue;
         last_update = now;
 
-        for (int xi = 0; xi < SCREEN_WIDTH / PIXEL_SIZE; xi++) {
-            for (int yi = 0; yi < SCREEN_HEIGHT / PIXEL_SIZE; yi++) {
+        for (int xi = 0; xi < GRID_WIDTH; xi++) {
+            for (int yi = 0; yi < GRID_HEIGHT; yi++) {
                 switch (getPixelAt(ogPixels, xi, yi)) {
-                  case 0x00FFFFFF: // sand
-                    if (yi + 1 >= SCREEN_HEIGHT / PIXEL_SIZE) continue; // OOB check
+                  case SAND: // sand
+                    if (yi + 1 >= GRID_HEIGHT) continue; // OOB check
                                                                    
-                    setPixelAt(newPixels, xi, yi, 0x000000FF);
+                    setPixelAt(newPixels, xi, yi, VOID);
 
-                    if (getPixelAt(ogPixels, xi, yi+1) == 0x000000FF)
-                        setPixelAt(newPixels, xi, yi+1, 0x00FFFFFF);
+                    if (getPixelAt(ogPixels, xi, yi+1) == VOID)
+                        setPixelAt(newPixels, xi, yi+1, SAND);
 
-                    else if (getPixelAt(ogPixels, xi-1, yi+1) == 0x000000FF)
-                        setPixelAt(newPixels, xi-1, yi+1, 0x00FFFFFF);
+                    else if (getPixelAt(ogPixels, xi-1, yi+1) == VOID)
+                        setPixelAt(newPixels, xi-1, yi+1, SAND);
 
-                    else if (getPixelAt(ogPixels, xi+1, yi+1) == 0x000000FF)
-                        setPixelAt(newPixels, xi+1, yi+1, 0x00FFFFFF);
+                    else if (getPixelAt(ogPixels, xi+1, yi+1) == VOID)
+                        setPixelAt(newPixels, xi+1, yi+1, SAND);
 
                     else
-                        setPixelAt(newPixels, xi, yi, 0x00FFFFFF);
+                        setPixelAt(newPixels, xi, yi, SAND);
 
                     break;
                 }
