@@ -1,8 +1,11 @@
+#include <SDL2/SDL_timer.h>
+#include <cmath>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_main.h>
 #include <iostream>
+#include <chrono>
 
 // 2d array (old, updated)
 // logic
@@ -13,8 +16,8 @@ SDL_Window* window;
 SDL_Renderer* renderer;
 SDL_bool app_quit;
 
-Uint32 ogPixels[SCREEN_WIDTH * SCREEN_HEIGHT]; // Use Uint32 for pixel data
-Uint32 newPixels[SCREEN_WIDTH * SCREEN_HEIGHT]; // Use Uint32 for pixel data
+int ogPixels[SCREEN_WIDTH * SCREEN_HEIGHT];
+int newPixels[SCREEN_WIDTH * SCREEN_HEIGHT];
 
 SDL_Texture* buffer = nullptr;
 
@@ -41,11 +44,6 @@ bool init() {
         return false;
     }
 
-    Uint32 whitePixel = 0xFF0000FF; // White color in BGRA8888 format
-    for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-        ogPixels[i] = whitePixel;
-    }
-
     return true;
 }
 
@@ -67,6 +65,9 @@ int main() {
     bool quit = false;
     SDL_Event e;
 
+    const auto start = std::chrono::steady_clock::now();
+    long last_second = 0;
+
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
@@ -74,17 +75,37 @@ int main() {
             }
         }
 
-        int pitch = SCREEN_WIDTH * sizeof(Uint32); // pitch in bytes
+        const auto now = std::chrono::steady_clock::now();
+        const std::chrono::duration<double> diff = now - start;
 
-        void* pixels;
-        if (SDL_LockTexture(buffer, NULL, &pixels, &pitch) == 0) {
-            memcpy(pixels, ogPixels, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(Uint32));
-            SDL_UnlockTexture(buffer);
+        std::cout << diff.count() << std::endl;
+
+        long sec_count = static_cast <int> (std::floor(diff.count()));
+
+        if (sec_count != last_second) {
+            if (sec_count % 2 == 0) {
+                for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+                    ogPixels[i] = 0x0000FFFF;
+                }
+            }
+            else {
+                for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+                    ogPixels[i] = 0x00FF00FF;
+                }
+            }
+
+            int pitch = SCREEN_WIDTH * sizeof(int); // pitch in bytes
+
+            int* pixels;
+            if (SDL_LockTexture(buffer, NULL, (void**)&pixels, &pitch) == 0) {
+                memcpy(pixels, ogPixels, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(int));
+                SDL_UnlockTexture(buffer);
+            }
+
+            SDL_RenderClear(renderer); // Clear the renderer with the current drawing color
+            SDL_RenderCopy(renderer, buffer, NULL, NULL);
+            SDL_RenderPresent(renderer);
         }
-
-        SDL_RenderClear(renderer); // Clear the renderer with the current drawing color
-        SDL_RenderCopy(renderer, buffer, NULL, NULL);
-        SDL_RenderPresent(renderer);
     }
 
     close();
