@@ -29,6 +29,16 @@ void Engine::HandleKeypress(SDL_KeyboardEvent e) {
     }
 }
 
+bool Engine::Legal(int xi, int yi) {
+    bool l = xi >= 0;
+    bool r = xi < GRID_WIDTH;
+
+    bool t = yi >= 0;
+    bool b = yi < GRID_HEIGHT;
+
+    return l && r && t && b;
+}
+
 void Engine::Loop() {
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
@@ -58,27 +68,27 @@ void Engine::Loop() {
     }
 
 
-    for (int xi = 0; xi < GRID_WIDTH; xi++) {
-        for (int yi = 0; yi < GRID_HEIGHT; yi++) {
+    for (int xi = GRID_WIDTH-1; xi >= 0; xi--) {
+        for (int yi = GRID_HEIGHT-1; yi >= 0; yi--) {
             switch (Renderer::GetPixelAt(Renderer::ogPixels, xi, yi)) {
               case WATER:
-                if (yi + 1 >= GRID_HEIGHT) continue; // OOB check
-                                                               
                 Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
 
-                if (Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == VOID)
+                if (Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::newPixels, xi, yi+1) == VOID)
                     Renderer::SetPixelAt(Renderer::newPixels, xi, yi+1, WATER);
 
-                else if (Renderer::GetPixelAt(Renderer::ogPixels, xi-1, yi+1) == VOID)
+                else if (Legal(xi-1, yi+1) && Renderer::GetPixelAt(Renderer::newPixels, xi-1, yi+1) == VOID)
                     Renderer::SetPixelAt(Renderer::newPixels, xi-1, yi+1, WATER);
 
-                else if (Renderer::GetPixelAt(Renderer::ogPixels, xi+1, yi+1) == VOID)
+                else if (Legal(xi+1, yi+1) && Renderer::GetPixelAt(Renderer::newPixels, xi+1, yi+1) == VOID)
                     Renderer::SetPixelAt(Renderer::newPixels, xi+1, yi+1, WATER);
 
-                else if (Renderer::GetPixelAt(Renderer::ogPixels, xi+1, yi) == VOID)
+                else if (Legal(xi+1, yi) && Renderer::GetPixelAt(Renderer::newPixels, xi+1, yi) == VOID) {
+                    std::cout << "void at " << xi << " " << yi << std::endl;
                     Renderer::SetPixelAt(Renderer::newPixels, xi+1, yi, WATER);
+                }
 
-                else if (Renderer::GetPixelAt(Renderer::ogPixels, xi-1, yi) == VOID)
+                else if (Legal(xi-1, yi) && Renderer::GetPixelAt(Renderer::newPixels, xi-1, yi) == VOID)
                     Renderer::SetPixelAt(Renderer::newPixels, xi-1, yi, WATER);
 
                 else
@@ -87,17 +97,17 @@ void Engine::Loop() {
                 break;
 
               case SAND:
-                if (yi + 1 >= GRID_HEIGHT) continue; // OOB check
+                if (!Legal(xi, yi+1)) continue; // OOB check
                                                                
                 Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
 
-                if (Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == VOID)
+                if (Renderer::GetPixelAt(Renderer::newPixels, xi, yi+1) == VOID)
                     Renderer::SetPixelAt(Renderer::newPixels, xi, yi+1, SAND);
 
-                else if (Renderer::GetPixelAt(Renderer::ogPixels, xi-1, yi+1) == VOID)
+                else if (Renderer::GetPixelAt(Renderer::newPixels, xi-1, yi+1) == VOID)
                     Renderer::SetPixelAt(Renderer::newPixels, xi-1, yi+1, SAND);
 
-                else if (Renderer::GetPixelAt(Renderer::ogPixels, xi+1, yi+1) == VOID)
+                else if (Renderer::GetPixelAt(Renderer::newPixels, xi+1, yi+1) == VOID)
                     Renderer::SetPixelAt(Renderer::newPixels, xi+1, yi+1, SAND);
 
                 else

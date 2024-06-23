@@ -1,10 +1,12 @@
-#include "engine.h"
 #define SDL_MAIN_HANDLED
+
 #include <SDL2/SDL.h>
 #include <chrono>
 #include <iostream>
 
 #include "renderer.h"
+#include "engine.h"
+
 
 // CONSTANTS
 SDL_bool app_quit;
@@ -33,7 +35,7 @@ int main() {
     bool quit = false;
     SDL_Event e;
 
-    const std::chrono::duration<double> delay{0.01};
+    const std::chrono::duration<double> delay{0.1};
     auto last_update = std::chrono::steady_clock::now();
 
     while (!quit) {

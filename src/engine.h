@@ -7,5 +7,6 @@ namespace Engine {
     extern bool spawnParticles;
 
     void HandleKeypress(SDL_KeyboardEvent e);
+    bool Legal(int xi, int yi);
     void Loop();
 }

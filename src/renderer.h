@@ -18,6 +18,7 @@ namespace Renderer {
 
     int IdxToCoord(int idx);
 
+    // these should really be size_t
     int GetPixelAt(int* arr, int xi, int yi);
 
     void SetPixelAt(int* arr, int xi, int yi, int color);
