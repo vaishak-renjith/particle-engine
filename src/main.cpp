@@ -1,10 +1,6 @@
-#include <SDL2/SDL_mouse.h>
-#include <SDL2/SDL_timer.h>
 #include <cmath>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_stdinc.h>
-#include <SDL2/SDL_main.h>
 #include <iostream>
 #include <chrono>
 
@@ -73,7 +69,7 @@ int main() {
     bool quit = false;
     SDL_Event e;
 
-    const std::chrono::duration<double> delay{0.1};
+    const std::chrono::duration<double> delay{0.5};
     auto last_update = std::chrono::steady_clock::now();
 
     bool spawnSand = false;
@@ -97,8 +93,6 @@ int main() {
         SDL_GetMouseState(&x, &y);
 
         if (spawnSand) {
-            std::cout << "(" << x << ", " << y << ")\n";
-
             // snap x to closest on-grid point
             int leftDist = x%PIXEL_SIZE;
 
@@ -119,11 +113,9 @@ int main() {
 
             int p = x + y*SCREEN_WIDTH;
 
-            std::cout << "(" << x << ", " << y << ")\n";
-
             for (int pw = 0; pw < PIXEL_SIZE; pw++) {
                 for (int ph = 0; ph < PIXEL_SIZE; ph++) {
-                    newPixels[p + pw + ((ph+1)*SCREEN_WIDTH)] = 0x00FFFFFF;
+                    newPixels[p + pw + (ph+1)*SCREEN_WIDTH] = 0x00FFFFFF;
                 }
             }
         }
@@ -141,19 +133,22 @@ int main() {
             if (p % PIXEL_SIZE != 0) continue;
             if ((p / SCREEN_WIDTH) % PIXEL_SIZE != 0) continue;
 
-            if (ogPixels[p] != 0x00FFFFFF) continue;
-
-            // check if empty below
-            if (p+SCREEN_WIDTH < SCREEN_WIDTH*SCREEN_HEIGHT) {
-                std::cout << ogPixels[p+SCREEN_WIDTH] << std::endl;
-                if (ogPixels[p+SCREEN_WIDTH] == 0x000000FF) {
+            switch (ogPixels[p]) {
+              case 0x00FFFFFF: // sand
+                // check if empty below
+                if (p+SCREEN_WIDTH >= SCREEN_WIDTH*SCREEN_HEIGHT) continue; // OOB check
+                if (ogPixels[p+SCREEN_WIDTH] == 0x000000FF) { // check if empty below
                     // update new pixels
                     for (int pw = 0; pw < PIXEL_SIZE; pw++) {
                         for (int ph = 0; ph < PIXEL_SIZE; ph++) {
-                            newPixels[p + pw + ((ph+1)*SCREEN_WIDTH)] = 0x00FFFFFF;
                         }
                     }
                 }
+
+                break;
+
+              case 0x000000FF: // blank
+                break;
             }
         }
 
