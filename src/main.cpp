@@ -12,6 +12,7 @@
 // logic
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 800;
+const int PIXEL_SIZE = 10;
 
 SDL_Window* window;
 SDL_Renderer* renderer;
@@ -96,7 +97,35 @@ int main() {
         SDL_GetMouseState(&x, &y);
 
         if (spawnSand) {
-            ogPixels[y*SCREEN_WIDTH+x] = 0x00FFFFFF;
+            std::cout << "(" << x << ", " << y << ")\n";
+
+            // snap x to closest on-grid point
+            int leftDist = x%PIXEL_SIZE;
+
+            if (leftDist < PIXEL_SIZE - leftDist) {
+                x -= leftDist;
+            } else {
+                x += PIXEL_SIZE - leftDist;
+            }
+
+            // snap y to closest on-grid point
+            int topDist = y - (y/PIXEL_SIZE*PIXEL_SIZE);
+
+            if (topDist < PIXEL_SIZE - topDist) {
+                y -= topDist;
+            } else {
+                y += PIXEL_SIZE - topDist;
+            }
+
+            int p = x + y*SCREEN_WIDTH;
+
+            std::cout << "(" << x << ", " << y << ")\n";
+
+            for (int pw = 0; pw < PIXEL_SIZE; pw++) {
+                for (int ph = 0; ph < PIXEL_SIZE; ph++) {
+                    newPixels[p + pw + ((ph+1)*SCREEN_WIDTH)] = 0x00FFFFFF;
+                }
+            }
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -109,13 +138,21 @@ int main() {
 
 
         for (int p = 0; p < SCREEN_WIDTH*SCREEN_HEIGHT; p++) {
+            if (p % PIXEL_SIZE != 0) continue;
+            if ((p / SCREEN_WIDTH) % PIXEL_SIZE != 0) continue;
+
             if (ogPixels[p] != 0x00FFFFFF) continue;
 
             // check if empty below
             if (p+SCREEN_WIDTH < SCREEN_WIDTH*SCREEN_HEIGHT) {
                 std::cout << ogPixels[p+SCREEN_WIDTH] << std::endl;
                 if (ogPixels[p+SCREEN_WIDTH] == 0x000000FF) {
-                    newPixels[p+SCREEN_WIDTH] = 0x00FFFFFF;
+                    // update new pixels
+                    for (int pw = 0; pw < PIXEL_SIZE; pw++) {
+                        for (int ph = 0; ph < PIXEL_SIZE; ph++) {
+                            newPixels[p + pw + ((ph+1)*SCREEN_WIDTH)] = 0x00FFFFFF;
+                        }
+                    }
                 }
             }
         }
