@@ -14,6 +14,30 @@ int Engine::currentParticle = SAND;
 int Engine::velocity[GRID_WIDTH * GRID_HEIGHT] = {0};
 
 
+int Engine::ClosestX(int x) {
+    int leftDist = x%PIXEL_SIZE;
+
+    if (leftDist < PIXEL_SIZE - leftDist) {
+        x -= leftDist;
+    } else {
+        x += PIXEL_SIZE - leftDist;
+    }
+
+    return x;
+}
+
+int Engine::ClosestY(int y) {
+    int topDist = y - (y/PIXEL_SIZE*PIXEL_SIZE);
+
+    if (topDist < PIXEL_SIZE - topDist) {
+        y -= topDist;
+    } else {
+        y += PIXEL_SIZE - topDist;
+    }
+
+    return y;
+}
+
 int Engine::GetVel(bool vertical, int xi, int yi) {
     int pos = xi + yi*GRID_WIDTH;
     int velPacked = velocity[pos];
@@ -57,19 +81,45 @@ bool Engine::Legal(int xi, int yi) {
 }
 
 bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type) {
-    if (!Legal(xi+xoff, yi+yoff)) return false;
+    // find most aggressive placement
+    int aggXi = xi, aggYi = yi;
 
-    int existingParticle = Renderer::GetPixelAt(Renderer::newPixels, xi+xoff, yi+yoff);
+    std::cout << yi+yoff << std::endl;
+    std::cout << yi << std::endl;
 
-    if (existingParticle != condition) return false;
+    for (int funcY = yi+yoff; funcY > yi; funcY--) {
+        int funcX = (double)xoff/yoff * (funcY - yi) + xi;
+
+        int closestX = ClosestX(funcX*PIXEL_SIZE)/PIXEL_SIZE;
+        int closestY = ClosestY(funcY*PIXEL_SIZE)/PIXEL_SIZE;
+
+        std::cout << "legal @ " << closestX << " " << closestY << std::endl;
+        if (!Legal(closestX, closestY)) {
+            if (funcY == yi+1) return false;
+            continue;
+        }
+        std::cout << "condition" << std::endl;
+        int existingParticle = Renderer::GetPixelAt(Renderer::newPixels, closestX, closestY);
+        if (existingParticle != condition) continue;
+
+
+        std::cout << "agg set" << std::endl;
+        aggXi = closestX;
+        aggYi = closestY;
+
+        // skip if nothing is collided with
+        if (funcY == yi+yoff) continue;
+        // otherwise, kill horizontal movement
+        SetVel(xi, yi, 0, GetVel(true, xi, yi));
+    }
 
     // move particle
-    Renderer::SetPixelAt(Renderer::newPixels, xi+xoff, yi+yoff, type);
+    Renderer::SetPixelAt(Renderer::newPixels, aggXi, aggYi, type);
     Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
 
     int xvel = GetVel(false, xi, yi);
     int yvel = GetVel(true, xi, yi);
-    SetVel(xi+xoff, yi+yoff, xvel, yvel);
+    SetVel(aggXi, aggYi, xvel, yvel);
     SetVel(xi, yi, 0, 0);
 
     return true;
@@ -81,22 +131,8 @@ void Engine::Loop() {
 
     if (spawnParticles) {
         // snap x to closest on-grid point
-        int leftDist = mouseX%PIXEL_SIZE;
-
-        if (leftDist < PIXEL_SIZE - leftDist) {
-            mouseX -= leftDist;
-        } else {
-            mouseX += PIXEL_SIZE - leftDist;
-        }
-
-        // snap y to closest on-grid point
-        int topDist = mouseY - (mouseY/PIXEL_SIZE*PIXEL_SIZE);
-
-        if (topDist < PIXEL_SIZE - topDist) {
-            mouseY -= topDist;
-        } else {
-            mouseY += PIXEL_SIZE - topDist;
-        }
+        mouseX = ClosestX(mouseX);
+        mouseY = ClosestY(mouseY);
 
         // std::cout << "pixel Renderer::Set at " << x << " " << y << std::endl;
         Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, currentParticle);
@@ -112,18 +148,26 @@ void Engine::Loop() {
 
             switch (Renderer::GetPixelAt(Renderer::ogPixels, xi, yi)) {
               case WATER:
-                if (AttemptMove(xi, yi, +0, +yvel, VOID, WATER)    || 
-                    AttemptMove(xi, yi, -1, +yvel, VOID, WATER)    ||
-                    AttemptMove(xi, yi, +1, +yvel, VOID, WATER)    ||
-                    AttemptMove(xi, yi, +1, +0, VOID, WATER)       ||
-                    AttemptMove(xi, yi, -1, +0, VOID, WATER))      {}
+                if (xvel == 0) {
+                if (AttemptMove(xi, yi, +0, yvel, VOID, WATER)    || 
+                    AttemptMove(xi, yi, -1, yvel, VOID, WATER)    ||
+                    AttemptMove(xi, yi, +1, yvel, VOID, WATER)    ||
+                    AttemptMove(xi, yi, +1, 0, VOID, WATER)       ||
+                    AttemptMove(xi, yi, -1, 0, VOID, WATER))      {}
+                } else {
+                    AttemptMove(xi, yi, xvel, yvel, VOID, WATER);
+                }
 
                 break;
 
               case SAND:
-                if (AttemptMove(xi, yi, +0, +yvel, VOID, SAND)    || 
-                    AttemptMove(xi, yi, -1, +yvel, VOID, SAND)    ||
-                    AttemptMove(xi, yi, +1, +yvel, VOID, SAND))   {}
+                if (xvel == 0) {
+                if (AttemptMove(xi, yi, +0, yvel, VOID, SAND)    || 
+                    AttemptMove(xi, yi, -1, yvel, VOID, SAND)    ||
+                    AttemptMove(xi, yi, +1, yvel, VOID, SAND))   {}
+                } else {
+                    AttemptMove(xi, yi, xvel, yvel, VOID, SAND);
+                }
 
                 break;
             }
