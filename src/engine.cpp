@@ -42,7 +42,12 @@ int Engine::GetVel(bool vertical, int xi, int yi) {
     int pos = xi + yi*GRID_WIDTH;
     int velPacked = velocity[pos];
 
-    return (!vertical) ? (velPacked & 0x0000FFFF) : (velPacked >> 16);
+    int vel = (vertical) ? (velPacked>>16) : velPacked&0x0000FFFF;
+    if ((vel & 0x00008000) != 0) {
+        vel |= 0xFFFF0000;
+        std::cout << "ping:" << velPacked << std::endl;
+    }
+    return vel;
 }
 
 void Engine::SetVel(int xi, int yi, int xvel, int yvel) {
@@ -50,7 +55,7 @@ void Engine::SetVel(int xi, int yi, int xvel, int yvel) {
 
     int pos = xi + yi*GRID_WIDTH;
 
-    velocity[pos] = yvel<<16 | xvel;
+    velocity[pos] = yvel<<16 | (xvel&0x0000FFFF);
 }
 
 void Engine::HandleKeypress(SDL_KeyboardEvent e) {
@@ -81,13 +86,21 @@ bool Engine::Legal(int xi, int yi) {
 }
 
 
-void FindMostAggressiveMove(int &aggXi, int &aggYi, int mostIdx, int leastIdx, bool isHorizontalSearch,
-                                                                 int xi, int yi, int xoff, int yoff, int condition) {
+void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
+                            int xi, int yi, int xoff, int yoff, int condition) {
+    int mostIdx = (isHorizontalSearch) ? (xi+xoff) : yi+yoff;
+    int leastIdx = (isHorizontalSearch) ? xi : yi;
+    
     int funcX, funcY;
     int closestX, closestY;
     int existingParticle;
 
+    // std::cout << "mostidx " << mostIdx << std::endl;
+    // std::cout << "leastidx " << leastIdx << std::endl;
+
+
     if (mostIdx > leastIdx) {
+        // std::cout << "loopp" << std::endl;
         for (; mostIdx > leastIdx; mostIdx--) {
             run_checks:
             funcX = mostIdx, funcY = mostIdx;
@@ -99,14 +112,21 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, int mostIdx, int leastIdx, b
 
             closestX = Engine::ClosestX(funcX*PIXEL_SIZE)/PIXEL_SIZE;
             closestY = Engine::ClosestY(funcY*PIXEL_SIZE)/PIXEL_SIZE;
+            std::cout << "fail legal" << std::endl;
             if (!Engine::Legal(closestX, closestY)) continue;
 
 
+            std::cout << "fail condition" << std::endl;
             existingParticle = Renderer::GetPixelAt(Renderer::newPixels, closestX, closestY);
             if (existingParticle != condition) continue;
 
 
-            if (std::pow(closestX, 2) + std::pow(closestY, 2) > std::pow(aggXi, 2) + std::pow(aggYi, 2)) {
+            std::cout << "fail pow" << std::endl;
+            std::cout << "ix/y: " << xi << " " << yi << std::endl;
+            std::cout << "cx/y: " << closestX << " " << closestY << std::endl;
+            // std::cout << "aggx/y: " << aggXi << " " << aggYi << std::endl;
+
+            if (std::pow(closestX-xi, 2) + std::pow(closestY-yi, 2) > std::pow(aggXi-xi, 2) + std::pow(aggYi-yi, 2)) {
                 aggXi = closestX;
                 aggYi = closestY;
             }
@@ -114,6 +134,7 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, int mostIdx, int leastIdx, b
         }
     } else {
         for (; mostIdx < leastIdx; mostIdx++) {
+            std::cout << "loopp" << std::endl;
             goto run_checks;
         }
     }
@@ -122,8 +143,8 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, int mostIdx, int leastIdx, b
 bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type) {
     // find most aggressive placement
     int aggXi = xi, aggYi = yi;
-    FindMostAggressiveMove(aggXi, aggYi, xi+xoff, xi, true, xi, yi, xoff, yoff, condition);
-    FindMostAggressiveMove(aggXi, aggYi, yi+yoff, yi, true, xi, yi, xoff, yoff, condition);
+    FindMostAggressiveMove(aggXi, aggYi, true, xi, yi, xoff, yoff, condition);
+    FindMostAggressiveMove(aggXi, aggYi, false, xi, yi, xoff, yoff, condition);
 
     // if most aggressive position is starting position, try something else
     if (aggXi == xi && aggYi == yi) return false;
@@ -165,7 +186,7 @@ void Engine::Loop() {
         // std::cout << "pixel Renderer::Set at " << x << " " << y << std::endl;
         Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, currentParticle);
         Renderer::SetPixelAt(Renderer::newPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, currentParticle);
-        SetVel(mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, 0, GRAVITY);
+        SetVel(mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, -5, GRAVITY);
     }
 
 
@@ -189,8 +210,11 @@ void Engine::Loop() {
                 break;
 
               case SAND:
+                std::cout << "xvel: " << xvel << std::endl;
+                std::cout << "yvel: " << yvel << std::endl;
+
                 if (xvel == 0) {
-                if (AttemptMove(xi, yi, +0, yvel, VOID, SAND)    ||
+                if (AttemptMove(xi, yi, +0, yvel, VOID, SAND) ||
                     AttemptMove(xi, yi, -1, 1, VOID, SAND)    ||
                     AttemptMove(xi, yi, +1, 1, VOID, SAND))   {}
                 } else {
