@@ -118,18 +118,18 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
 
             closestX = Engine::ClosestX(funcX*PIXEL_SIZE)/PIXEL_SIZE;
             closestY = Engine::ClosestY(funcY*PIXEL_SIZE)/PIXEL_SIZE;
-            std::cout << "fail legal" << std::endl;
+            // std::cout << "fail legal" << std::endl;
             if (!Engine::Legal(closestX, closestY)) continue;
 
 
-            std::cout << "fail condition" << std::endl;
+            // std::cout << "fail condition" << std::endl;
             existingParticle = Renderer::GetPixelAt(Renderer::newPixels, closestX, closestY);
             if (existingParticle != condition) continue;
 
 
             // std::cout << "aggx/y: " << aggXi << " " << aggYi << std::endl;
 
-            std::cout << "fail pow" << std::endl;
+            // std::cout << "fail pow" << std::endl;
             if (std::pow(closestX-xi, 2) + std::pow(closestY-yi, 2) > std::pow(aggXi-xi, 2) + std::pow(aggYi-yi, 2)) {
                 std::cout << "ix/y: " << xi << " " << yi << std::endl;
                 std::cout << "cx/y: " << closestX << " " << closestY << std::endl;
@@ -137,7 +137,7 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
                 aggXi = closestX;
                 aggYi = closestY;
             }
-            std::cout << "break" << std::endl;
+            // std::cout << "break" << std::endl;
             break;
         }
     } else {
@@ -187,29 +187,6 @@ void Engine::Loop() {
     mouseY = std::max(0, mouseY);
     mouseY = std::min(mouseY, SCREEN_HEIGHT-1);
 
-    if (spawnParticles) {
-        // snap x to closest on-grid point
-        mouseX = ClosestX(mouseX);
-        mouseY = ClosestY(mouseY);
-
-        if (Renderer::GetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE) != VOID) {
-            int xi = mouseX/PIXEL_SIZE;
-            int yi = mouseY/PIXEL_SIZE;
-
-            int xvel = GetVel(false, xi, yi);
-            int yvel = GetVel(true, xi, yi);
-
-            std::cout << "debug (" << xi << ", " << yi << ")" << std::endl;
-            std::cout << "veloc (" << xvel << ", " << yvel << ")" << std::endl;
-        }
-
-        else {
-            Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, currentParticle);
-            SetVel(mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, 1*((positive)?1:-1), -GRAVITY);
-        }
-    }
-
-
     for (int xi = GRID_WIDTH-1; xi >= 0; xi--) {
         for (int yi = GRID_HEIGHT-1; yi >= 0; yi--) {
             int xvel = GetVel(false, xi, yi);
@@ -242,6 +219,31 @@ void Engine::Loop() {
                 }
 
                 break;
+            }
+        }
+    }
+
+    if (spawnParticles) {
+        // snap x to closest on-grid point
+        mouseX = ClosestX(mouseX);
+        mouseY = ClosestY(mouseY);
+
+        if (Renderer::GetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE) != VOID) {
+            int xi = mouseX/PIXEL_SIZE;
+            int yi = mouseY/PIXEL_SIZE;
+
+            int xvel = GetVel(false, xi, yi);
+            int yvel = GetVel(true, xi, yi);
+
+            std::cout << "debug (" << xi << ", " << yi << ")" << std::endl;
+            std::cout << "veloc (" << xvel << ", " << yvel << ")" << std::endl;
+        }
+
+        else {
+            for (int i = -10; i <= 10; i++) {
+                Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE + i, mouseY/PIXEL_SIZE, currentParticle);
+                Renderer::SetPixelAt(Renderer::newPixels, mouseX/PIXEL_SIZE + i, mouseY/PIXEL_SIZE, currentParticle);
+                SetVel(mouseX/PIXEL_SIZE + i, mouseY/PIXEL_SIZE, rand()%10*((positive)?1:-1), GRAVITY);
             }
         }
     }

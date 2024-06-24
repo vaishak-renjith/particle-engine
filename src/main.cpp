@@ -35,7 +35,7 @@ int main() {
     bool quit = false;
     SDL_Event e;
 
-    const std::chrono::duration<double> delay{1};
+    const std::chrono::duration<double> delay{0.01};
     auto last_update = std::chrono::steady_clock::now();
 
     while (!quit) {
