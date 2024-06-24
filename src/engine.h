@@ -7,6 +7,8 @@ namespace Engine {
     extern int currentParticle;
     extern bool spawnParticles;
 
+    extern bool positive;
+
     // pack velocity into integers
     // first 16 bytes correspond to vertical velocity, last 16 correspond to horizontal
     // this sets a hard cap of velocity at (-2^15, 2^15-1) which theoretically will never be met regardless
@@ -28,4 +30,4 @@ namespace Engine {
     void HandleKeypress(SDL_KeyboardEvent e);
 }
 
-#define GRAVITY 10
+#define GRAVITY 2

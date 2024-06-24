@@ -10,6 +10,7 @@
 #include "definitions.h"
 
 bool Engine::spawnParticles = false;
+bool Engine::positive = false;
 int Engine::currentParticle = SAND;
 int Engine::velocity[GRID_WIDTH * GRID_HEIGHT] = {0};
 
@@ -45,7 +46,6 @@ int Engine::GetVel(bool vertical, int xi, int yi) {
     int vel = (vertical) ? (velPacked>>16) : velPacked&0x0000FFFF;
     if ((vel & 0x00008000) != 0) {
         vel |= 0xFFFF0000;
-        std::cout << "ping:" << velPacked << std::endl;
     }
     return vel;
 }
@@ -71,6 +71,13 @@ void Engine::HandleKeypress(SDL_KeyboardEvent e) {
         case SDLK_BACKSPACE:
             std::cout << "void" << std::endl;
             currentParticle = VOID;
+            break;
+
+        case SDLK_EQUALS:
+            positive = true;
+            break;
+        case SDLK_MINUS:
+            positive = false;
             break;
     }
 }
@@ -100,7 +107,6 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
 
 
     if (mostIdx > leastIdx) {
-        // std::cout << "loopp" << std::endl;
         for (; mostIdx > leastIdx; mostIdx--) {
             run_checks:
             funcX = mostIdx, funcY = mostIdx;
@@ -121,20 +127,21 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
             if (existingParticle != condition) continue;
 
 
-            std::cout << "fail pow" << std::endl;
-            std::cout << "ix/y: " << xi << " " << yi << std::endl;
-            std::cout << "cx/y: " << closestX << " " << closestY << std::endl;
             // std::cout << "aggx/y: " << aggXi << " " << aggYi << std::endl;
 
+            std::cout << "fail pow" << std::endl;
             if (std::pow(closestX-xi, 2) + std::pow(closestY-yi, 2) > std::pow(aggXi-xi, 2) + std::pow(aggYi-yi, 2)) {
+                std::cout << "ix/y: " << xi << " " << yi << std::endl;
+                std::cout << "cx/y: " << closestX << " " << closestY << std::endl;
+
                 aggXi = closestX;
                 aggYi = closestY;
             }
+            std::cout << "break" << std::endl;
             break;
         }
     } else {
         for (; mostIdx < leastIdx; mostIdx++) {
-            std::cout << "loopp" << std::endl;
             goto run_checks;
         }
     }
@@ -151,8 +158,10 @@ bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int 
     // skip if nothing is collided with, otherwise kill movement
     if (!(xi+xoff == aggXi && yi+yoff == aggYi)) {
         if (xoff == 0) {
+            std::cout << "both->0" << std::endl;
             SetVel(xi, yi, 0, 0);
         } else {
+            std::cout << "x->0" << std::endl;
             SetVel(xi, yi, 0, GetVel(true, xi, yi));
         }
     }
@@ -183,10 +192,21 @@ void Engine::Loop() {
         mouseX = ClosestX(mouseX);
         mouseY = ClosestY(mouseY);
 
-        // std::cout << "pixel Renderer::Set at " << x << " " << y << std::endl;
-        Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, currentParticle);
-        Renderer::SetPixelAt(Renderer::newPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, currentParticle);
-        SetVel(mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, -5, GRAVITY);
+        if (Renderer::GetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE) != VOID) {
+            int xi = mouseX/PIXEL_SIZE;
+            int yi = mouseY/PIXEL_SIZE;
+
+            int xvel = GetVel(false, xi, yi);
+            int yvel = GetVel(true, xi, yi);
+
+            std::cout << "debug (" << xi << ", " << yi << ")" << std::endl;
+            std::cout << "veloc (" << xvel << ", " << yvel << ")" << std::endl;
+        }
+
+        else {
+            Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, currentParticle);
+            SetVel(mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE, 1*((positive)?1:-1), -GRAVITY);
+        }
     }
 
 
@@ -210,8 +230,8 @@ void Engine::Loop() {
                 break;
 
               case SAND:
-                std::cout << "xvel: " << xvel << std::endl;
-                std::cout << "yvel: " << yvel << std::endl;
+                // std::cout << "xvel: " << xvel << std::endl;
+                // std::cout << "yvel: " << yvel << std::endl;
 
                 if (xvel == 0) {
                 if (AttemptMove(xi, yi, +0, yvel, VOID, SAND) ||
