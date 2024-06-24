@@ -8,6 +8,7 @@ namespace Engine {
     extern bool spawnParticles;
 
     extern bool positive;
+    extern bool pause;
 
     // pack velocity into integers
     // first 16 bytes correspond to vertical velocity, last 16 correspond to horizontal

@@ -11,6 +11,7 @@
 
 bool Engine::spawnParticles = false;
 bool Engine::positive = false;
+bool Engine::pause = false;
 int Engine::currentParticle = SAND;
 int Engine::velocity[GRID_WIDTH * GRID_HEIGHT] = {0};
 
@@ -79,6 +80,10 @@ void Engine::HandleKeypress(SDL_KeyboardEvent e) {
         case SDLK_MINUS:
             positive = false;
             break;
+
+        case SDLK_p:
+            pause = !pause;
+            break;
     }
 }
 
@@ -131,8 +136,8 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
 
             // std::cout << "fail pow" << std::endl;
             if (std::pow(closestX-xi, 2) + std::pow(closestY-yi, 2) > std::pow(aggXi-xi, 2) + std::pow(aggYi-yi, 2)) {
-                std::cout << "ix/y: " << xi << " " << yi << std::endl;
-                std::cout << "cx/y: " << closestX << " " << closestY << std::endl;
+                // std::cout << "ix/y: " << xi << " " << yi << std::endl;
+                // std::cout << "cx/y: " << closestX << " " << closestY << std::endl;
 
                 aggXi = closestX;
                 aggYi = closestY;
@@ -157,10 +162,7 @@ bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int 
     if (aggXi == xi && aggYi == yi) return false;
     // skip if nothing is collided with, otherwise kill movement
     if (!(xi+xoff == aggXi && yi+yoff == aggYi)) {
-        if (xoff == 0) {
-            std::cout << "both->0" << std::endl;
-            SetVel(xi, yi, 0, 0);
-        } else {
+        if (xoff != 0) {
             std::cout << "x->0" << std::endl;
             SetVel(xi, yi, 0, GetVel(true, xi, yi));
         }
@@ -187,7 +189,7 @@ void Engine::Loop() {
     mouseY = std::max(0, mouseY);
     mouseY = std::min(mouseY, SCREEN_HEIGHT-1);
 
-    for (int xi = GRID_WIDTH-1; xi >= 0; xi--) {
+    for (int xi = GRID_WIDTH-1; xi >= 0 && !pause; xi--) {
         for (int yi = GRID_HEIGHT-1; yi >= 0; yi--) {
             int xvel = GetVel(false, xi, yi);
             int yvel = GetVel(true, xi, yi);
@@ -240,10 +242,14 @@ void Engine::Loop() {
         }
 
         else {
-            for (int i = -10; i <= 10; i++) {
-                Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE + i, mouseY/PIXEL_SIZE, currentParticle);
-                Renderer::SetPixelAt(Renderer::newPixels, mouseX/PIXEL_SIZE + i, mouseY/PIXEL_SIZE, currentParticle);
-                SetVel(mouseX/PIXEL_SIZE + i, mouseY/PIXEL_SIZE, rand()%10*((positive)?1:-1), GRAVITY);
+            for (int xb = -BRUSH_RAD; xb <= BRUSH_RAD; xb++) {
+                for (int yb = -BRUSH_RAD; yb <= BRUSH_RAD; yb++) {
+                    if (pow(xb, 2) + pow(yb, 2) > pow(BRUSH_RAD, 2)) continue;
+
+                    Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, currentParticle);
+                    Renderer::SetPixelAt(Renderer::newPixels, mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, currentParticle);
+                    SetVel(mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, rand()%5*((positive)?1:-1), GRAVITY);
+                }
             }
         }
     }
