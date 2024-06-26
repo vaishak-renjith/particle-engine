@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_video.h>
 #include "definitions.h"
 #include "renderer.h"
 
@@ -11,7 +12,7 @@ int Renderer::newPixels[SCREEN_WIDTH * SCREEN_HEIGHT] = {0};
 SDL_Texture* Renderer::buffer = nullptr;
 
 bool Renderer::Init() {
-    window = SDL_CreateWindow("Window", 100, 100, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Window", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_UTILITY);
     if (!window) {
         return false;
     }
