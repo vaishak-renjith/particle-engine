@@ -70,7 +70,6 @@ void Engine::HandleKeypress(SDL_KeyboardEvent e) {
             std::cout << "water" << std::endl;
             currentParticle = WATER;
             break;
-<<<<<<< HEAD
         case SDLK_3:
             std::cout << "stone" << std::endl;
             currentParticle = STONE;
@@ -79,24 +78,12 @@ void Engine::HandleKeypress(SDL_KeyboardEvent e) {
             std::cout << "acid" << std::endl;
             currentParticle = ACID;
             break;
-=======
->>>>>>> af629a5 (clean code)
         case SDLK_0:
             std::cout << "void" << std::endl;
             currentParticle = VOID;
             break;
 
-<<<<<<< HEAD
-=======
-        case SDLK_BACKSLASH:
-            for (int xi = 0; xi < GRID_WIDTH; xi++) {
-                for (int yi = GRID_HEIGHT*8/10; yi < GRID_HEIGHT; yi++) {
-                    Renderer::SetPixelAt(Renderer::ogPixels, xi, yi, WATER);
-                    Renderer::SetPixelAt(Renderer::newPixels, xi, yi, WATER);
-                }
-            }
-            break;
->>>>>>> af629a5 (clean code)
+
         case SDLK_BACKSPACE:
             for (int xi = 0; xi < GRID_WIDTH; xi++) {
                 for (int yi = 0; yi < GRID_HEIGHT; yi++) {
@@ -106,7 +93,6 @@ void Engine::HandleKeypress(SDL_KeyboardEvent e) {
                 }
             }
             break;
-
 
 
         case SDLK_EQUALS:
