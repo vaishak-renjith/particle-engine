@@ -69,10 +69,30 @@ void Engine::HandleKeypress(SDL_KeyboardEvent e) {
             std::cout << "water" << std::endl;
             currentParticle = WATER;
             break;
-        case SDLK_BACKSPACE:
+        case SDLK_0:
             std::cout << "void" << std::endl;
             currentParticle = VOID;
             break;
+
+        case SDLK_BACKSLASH:
+            for (int xi = 0; xi < GRID_WIDTH; xi++) {
+                for (int yi = GRID_HEIGHT*8/10; yi < GRID_HEIGHT; yi++) {
+                    Renderer::SetPixelAt(Renderer::ogPixels, xi, yi, WATER);
+                    Renderer::SetPixelAt(Renderer::newPixels, xi, yi, WATER);
+                }
+            }
+            break;
+        case SDLK_BACKSPACE:
+            for (int xi = 0; xi < GRID_WIDTH; xi++) {
+                for (int yi = 0; yi < GRID_HEIGHT; yi++) {
+                    SetVel(xi, yi, 0, 0);
+                    Renderer::SetPixelAt(Renderer::ogPixels, xi, yi, VOID);
+                    Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
+                }
+            }
+            break;
+
+
 
         case SDLK_EQUALS:
             positive = true;
@@ -226,42 +246,50 @@ void Engine::Loop() {
             int xvel = GetVel(false, xi, yi);
             int yvel = GetVel(true, xi, yi);
 
-            #define dbg(X) if (mouseX/PIXEL_SIZE == xi && mouseY/PIXEL_SIZE == yi) std::cout << X << std::endl;
+            #define dbg(X) if (mouseX/PIXEL_SIZE == xi && mouseY/PIXEL_SIZE == yi) std::cout << X << std::endl
+            #define TRYBEG(B) if (B && (
+            #define TRYEND(X) )){dbg(X);}
             switch (Renderer::GetPixelAt(Renderer::ogPixels, xi, yi)) {
               case WATER:
-                  // std::cout << "xvel: " << xvel << std::endl;
-                  // std::cout << "yvel: " << yvel << std::endl;
-                  if (xvel != 0 && (
+                  TRYBEG(xvel != 0)
                       AttemptMove(xi, yi, xvel, yvel, VOID, WATER)
-                  )) {dbg(1)}
-                  else if (Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == VOID && (
-                      AttemptMove(xi, yi, 0, yvel, VOID, WATER)
-                  )) {dbg(2)}
-                  else if (Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == WATER && (
+                  TRYEND(1)
+
+                  else \
+                  TRYBEG(Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == VOID)
+                       AttemptMove(xi, yi, 0, yvel, VOID, WATER)
+                  TRYEND(2)
+
+                  else \
+                  TRYBEG(Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == WATER)
                       AttemptMove(xi, yi, -yvel, 0, VOID, WATER) ||
                       AttemptMove(xi, yi, +yvel, 0, VOID, WATER)
-                  )) {dbg(3)}
-                  else if (
+                  TRYEND(3)
+
+                  else \
+                  TRYBEG(true)
                       AttemptMove(xi, yi, +1, yvel, VOID, WATER, true) ||
                       AttemptMove(xi, yi, -1, yvel, VOID, WATER, true) ||
                       AttemptMove(xi, yi, +0, yvel, VOID, WATER)       ||
                       AttemptMove(xi, yi, -yvel, yvel, VOID, WATER)    ||
                       AttemptMove(xi, yi, +yvel, yvel, VOID, WATER)
-                  ) {dbg(4)}
+                  TRYEND(4)
 
                 break;
 
               case SAND:
-                if (xvel != 0 && (
+                TRYBEG(xvel != 0)
                     AttemptMove(xi, yi, xvel, yvel, VOID, SAND)
-                )) {}
-                else if (
+                TRYEND(1)
+
+                else \
+                TRYBEG(true)
                     AttemptMove(xi, yi, +1, yvel, VOID, SAND, true) ||
                     AttemptMove(xi, yi, -1, yvel, VOID, SAND, true) ||
                     AttemptMove(xi, yi, +0, yvel, VOID, SAND)       ||
                     AttemptMove(xi, yi, -yvel, yvel, VOID, SAND)    ||
                     AttemptMove(xi, yi, +yvel, yvel, VOID, SAND)
-                ) {}
+                TRYEND(2)
 
                 break;
             }
@@ -271,6 +299,7 @@ void Engine::Loop() {
     if (spawnParticles) {
         for (int xb = -BRUSH_RAD; xb <= BRUSH_RAD; xb++) {
             for (int yb = -BRUSH_RAD; yb <= BRUSH_RAD; yb++) {
+                if (!Legal(mouseX/PIXEL_SIZE+xb, mouseY/PIXEL_SIZE+yb)) continue;
                 if (pow(xb, 2) + pow(yb, 2) > pow(BRUSH_RAD, 2)) continue;
 
                 Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, currentParticle);
