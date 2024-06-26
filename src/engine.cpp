@@ -119,8 +119,9 @@ bool Engine::Legal(int xi, int yi) {
 }
 
 
-void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
-                            int xi, int yi, int xoff, int yoff, int condition) {
+void FindMostAggressiveMove(bool isHorizontalSearch, int xi, int yi, int xoff, int yoff, int condition,
+                           int &aggXi, int &aggYi, int &colXi, int &colYi) {
+
     int mostIdx = (isHorizontalSearch) ? (xi+xoff) : yi+yoff;
     int leastIdx = (isHorizontalSearch) ? xi : yi;
     
@@ -133,9 +134,10 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
 
 
     if (mostIdx > leastIdx) {
-        for (; mostIdx > leastIdx; mostIdx--) {
+        for (; leastIdx+1 <= mostIdx; leastIdx++) {
             run_checks:
-            funcX = mostIdx, funcY = mostIdx;
+            // std::cout << std::endl << "looptype:" << isHorizontalSearch << std::endl;
+            funcX = leastIdx, funcY = leastIdx;
 
             if (isHorizontalSearch)
                 funcY = (double)yoff/xoff * (funcX - xi) + yi;
@@ -144,30 +146,33 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
 
             closestX = Engine::ClosestX(funcX*PIXEL_SIZE)/PIXEL_SIZE;
             closestY = Engine::ClosestY(funcY*PIXEL_SIZE)/PIXEL_SIZE;
+            if (closestX == xi && closestY == yi) continue;
+
             // std::cout << "fail legal" << std::endl;
-            if (!Engine::Legal(closestX, closestY)) continue;
+            if (!Engine::Legal(closestX, closestY)) { // BOUNDARY HIT
+                colXi = -999;
+                colYi = -999;
+                return;
+            }
 
 
             // std::cout << "fail condition" << std::endl;
             existingParticle = Renderer::GetPixelAt(Renderer::newPixels, closestX, closestY);
-            if (existingParticle != condition) continue;
-
-
-            // std::cout << "aggx/y: " << aggXi << " " << aggYi << std::endl;
-
-            // std::cout << "fail pow" << std::endl;
-            if (std::pow(closestX-xi, 2) + std::pow(closestY-yi, 2) > std::pow(aggXi-xi, 2) + std::pow(aggYi-yi, 2)) {
-                // std::cout << "ix/y: " << xi << " " << yi << std::endl;
-                // std::cout << "cx/y: " << closestX << " " << closestY << std::endl;
-
-                aggXi = closestX;
-                aggYi = closestY;
+            // std::cout << "isvoid:" << (existingParticle==VOID) << std::endl;
+            // std::cout << "issand:" << (existingParticle==SAND) << std::endl;
+            if (existingParticle != condition) { // PARTICLE HIT
+                colXi = closestX;
+                colYi = closestY;
+                return;
             }
-            // std::cout << "break" << std::endl;
-            break;
+
+
+            // std::cout << "set agg" << std::endl;
+            aggXi = closestX;
+            aggYi = closestY;
         }
     } else {
-        for (; mostIdx < leastIdx; mostIdx++) {
+        for (; leastIdx-1 >= mostIdx; leastIdx--) {
             goto run_checks;
         }
     }
@@ -175,29 +180,56 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
 
 bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type, bool pure) {
     // find most aggressive placement
-    int aggXi = xi, aggYi = yi;
+    int aggXi, aggYi;
+    int colXi, colYi;
+
     if (!pure) {
-        FindMostAggressiveMove(aggXi, aggYi, true, xi, yi, xoff, yoff, condition);
-        FindMostAggressiveMove(aggXi, aggYi, false, xi, yi, xoff, yoff, condition);
+        // this could probably benefit from being a struct
+        int h_aggXi = xi, h_aggYi = yi;
+        int v_aggXi = xi, v_aggYi = yi;
+
+        int h_colXi = -1, h_colYi = -1;
+        int v_colXi = -1, v_colYi = -1;
+
+
+        FindMostAggressiveMove(true, xi, yi, xoff, yoff, condition, h_aggXi, h_aggYi, h_colXi, h_colYi);
+        FindMostAggressiveMove(false, xi, yi, xoff, yoff, condition, v_aggXi, v_aggYi, v_colXi, v_colYi);
+
+        bool h_greater = (std::abs(h_aggXi - xi) + std::abs(h_aggYi - yi)) >
+                         (std::abs(v_aggXi - xi) + std::abs(v_aggYi - yi));
+
+        // std::cout << "aggH:" << h_aggXi << " " << h_aggYi << std::endl;
+        // std::cout << "aggV:" << v_aggXi << " " << v_aggYi << std::endl;
+
+        if (h_greater) {
+            aggXi = h_aggXi;
+            aggYi = h_aggYi;
+            colXi = h_colXi;
+            colYi = h_colYi;
+        } else {
+            aggXi = v_aggXi;
+            aggYi = v_aggYi;
+            colXi = v_colXi;
+            colYi = v_colYi;
+        }
 
         // if most aggressive position is starting position, try something else
         if (aggXi == xi && aggYi == yi) return false;
         // skip if nothing is collided with
-        if (!(xi+xoff == aggXi && yi+yoff == aggYi)) {
+        if (!(colXi == -1 && colYi == -1)) {
             int xvel = GetVel(false, xi, yi);
             int yvel = GetVel(true, xi, yi);
 
-            if (!Legal(xi+xoff, yi+yoff)) { // if boundary hit, then set x velocity to 0
+            if (colXi == -999 && colYi == -999) { // if boundary hit, then set x velocity to 0
                 SetVel(xi, yi, 0, yvel);
-            } else { // otherwise, swap velocities
+            } else if (colXi != -1 && colYi != -1) { // otherwise, swap velocities
                 // this needs to be updated when i eventually make it so that skipping pixels is impossible
-                int xcvel = GetVel(false, xi+xoff, yi+yoff);
-                int ycvel = GetVel(true, xi+xoff, yi+yoff);
-                if (yvel == 0 || ycvel == 0)
-                    std::cout << "wtf" << std::endl;
+                int xcvel = GetVel(false, colXi, colYi);
+                int ycvel = GetVel(true, colXi, colYi);
+                std::cout << "vels: " << xcvel << " " << ycvel << std::endl;
 
                 SetVel(xi, yi, xcvel, ycvel);
-                SetVel(xi+xoff, yi+yoff, xvel, yvel);
+                SetVel(colXi, colYi, xvel, yvel);
             }
         }
     } else {
@@ -279,11 +311,13 @@ void Engine::Loop() {
 
               case SAND:
                 TRYBEG(xvel != 0)
+                    // false
                     AttemptMove(xi, yi, xvel, yvel, VOID, SAND)
                 TRYEND(1)
 
                 else \
                 TRYBEG(true)
+                    // AttemptMove(xi, yi, +0, yvel, VOID, SAND)
                     AttemptMove(xi, yi, +1, yvel, VOID, SAND, true) ||
                     AttemptMove(xi, yi, -1, yvel, VOID, SAND, true) ||
                     AttemptMove(xi, yi, +0, yvel, VOID, SAND)       ||
@@ -337,7 +371,7 @@ void Engine::Loop() {
         for (int xb = -BRUSH_RAD; xb <= BRUSH_RAD; xb++) {
             for (int yb = -BRUSH_RAD; yb <= BRUSH_RAD; yb++) {
                 if (!Legal(mouseX/PIXEL_SIZE+xb, mouseY/PIXEL_SIZE+yb)) continue;
-                if (pow(xb, 2) + pow(yb, 2) > pow(BRUSH_RAD, 2)) continue;
+                if (pow(xb, 2) + pow(yb, 2) >= pow(BRUSH_RAD, 2)) continue;
 
                 Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, currentParticle);
                 Renderer::SetPixelAt(Renderer::newPixels, mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, currentParticle);
