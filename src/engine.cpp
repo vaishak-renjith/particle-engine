@@ -172,15 +172,18 @@ bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int 
         if (aggXi == xi && aggYi == yi) return false;
         // skip if nothing is collided with
         if (!(xi+xoff == aggXi && yi+yoff == aggYi)) {
-            if (!Legal(xi+xoff, yi+yoff)) { // if boundary hit, then set velocity to 0
-                SetVel(xi, yi, 0, yoff);
-            } else { // otherwise, swap velocities
-                int xvel = GetVel(false, xi, yi);
-                int yvel = GetVel(true, xi, yi);
+            int xvel = GetVel(false, xi, yi);
+            int yvel = GetVel(true, xi, yi);
 
+            if (!Legal(xi+xoff, yi+yoff)) { // if boundary hit, then set x velocity to 0
+                SetVel(xi, yi, 0, yvel);
+            } else { // otherwise, swap velocities
                 // this needs to be updated when i eventually make it so that skipping pixels is impossible
                 int xcvel = GetVel(false, xi+xoff, yi+yoff);
                 int ycvel = GetVel(true, xi+xoff, yi+yoff);
+                if (yvel == 0 || ycvel == 0)
+                    std::cout << "wtf" << std::endl;
+
 
                 SetVel(xi, yi, xcvel, ycvel);
                 SetVel(xi+xoff, yi+yoff, xvel, yvel);
@@ -195,13 +198,16 @@ bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int 
     }
 
     // move particle
-    Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
-    Renderer::SetPixelAt(Renderer::newPixels, aggXi, aggYi, type);
+    // this is bad
+    if (!pause) {
+        Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
+        Renderer::SetPixelAt(Renderer::newPixels, aggXi, aggYi, type);
 
-    int xvel = GetVel(false, xi, yi);
-    int yvel = GetVel(true, xi, yi);
-    SetVel(aggXi, aggYi, xvel, yvel);
-    SetVel(xi, yi, 0, 0);
+        int xvel = GetVel(false, xi, yi);
+        int yvel = GetVel(true, xi, yi);
+        SetVel(aggXi, aggYi, xvel, yvel);
+        SetVel(xi, yi, 0, 0);
+    }
 
     return true;
 }
@@ -219,39 +225,45 @@ void Engine::Loop() {
     mouseY = std::max(0, mouseY);
     mouseY = std::min(mouseY, SCREEN_HEIGHT-1);
 
-    for (int xi = GRID_WIDTH-1; xi >= 0 && !pause; xi--) {
+    mouseX = ClosestX(mouseX);
+    mouseY = ClosestY(mouseY);
+
+
+    // readd pause optimization here (removed for debugging purposes)
+    for (int xi = GRID_WIDTH-1; xi >= 0; xi--) {
         for (int yi = GRID_HEIGHT-1; yi >= 0; yi--) {
             int xvel = GetVel(false, xi, yi);
             int yvel = GetVel(true, xi, yi);
 
+            #define dbg(X) if (mouseX/PIXEL_SIZE == xi && mouseY/PIXEL_SIZE == yi) std::cout << X << std::endl;
             switch (Renderer::GetPixelAt(Renderer::ogPixels, xi, yi)) {
               case WATER:
                   // std::cout << "xvel: " << xvel << std::endl;
                   // std::cout << "yvel: " << yvel << std::endl;
-                  if (xvel != 0) {
-                      AttemptMove(xi, yi, xvel, yvel, VOID, WATER);
-                  }
+                  if (xvel != 0 && (
+                      AttemptMove(xi, yi, xvel, yvel, VOID, WATER)
+                  )) {dbg(1)}
                   else if (Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == VOID && (
                       AttemptMove(xi, yi, 0, yvel, VOID, WATER)
-                  )) {}
+                  )) {dbg(2)}
                   else if (Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == WATER && (
                       AttemptMove(xi, yi, -yvel, 0, VOID, WATER) ||
                       AttemptMove(xi, yi, +yvel, 0, VOID, WATER)
-                  )) {}
+                  )) {dbg(3)}
                   else if (
                       AttemptMove(xi, yi, +1, yvel, VOID, WATER, true) ||
                       AttemptMove(xi, yi, -1, yvel, VOID, WATER, true) ||
                       AttemptMove(xi, yi, +0, yvel, VOID, WATER)       ||
                       AttemptMove(xi, yi, -yvel, yvel, VOID, WATER)    ||
                       AttemptMove(xi, yi, +yvel, yvel, VOID, WATER)
-                  ) {}
+                  ) {dbg(4)}
 
                 break;
 
               case SAND:
-                if (xvel != 0) {
-                    AttemptMove(xi, yi, xvel, yvel, VOID, SAND);
-                }
+                if (xvel != 0 && (
+                    AttemptMove(xi, yi, xvel, yvel, VOID, SAND)
+                )) {}
                 else if (
                     AttemptMove(xi, yi, +1, yvel, VOID, SAND, true) ||
                     AttemptMove(xi, yi, -1, yvel, VOID, SAND, true) ||
@@ -283,31 +295,26 @@ void Engine::Loop() {
     }
 
     if (spawnParticles) {
-        // snap x to closest on-grid point
-        mouseX = ClosestX(mouseX);
-        mouseY = ClosestY(mouseY);
+        for (int xb = -BRUSH_RAD; xb <= BRUSH_RAD; xb++) {
+            for (int yb = -BRUSH_RAD; yb <= BRUSH_RAD; yb++) {
+                if (pow(xb, 2) + pow(yb, 2) > pow(BRUSH_RAD, 2)) continue;
 
-        if (Renderer::GetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE) != VOID) {
-            int xi = mouseX/PIXEL_SIZE;
-            int yi = mouseY/PIXEL_SIZE;
-
-            int xvel = GetVel(false, xi, yi);
-            int yvel = GetVel(true, xi, yi);
-
-            std::cout << "debug (" << xi << ", " << yi << ")" << std::endl;
-            std::cout << "veloc (" << xvel << ", " << yvel << ")" << std::endl;
-        }
-
-        else {
-            for (int xb = -BRUSH_RAD; xb <= BRUSH_RAD; xb++) {
-                for (int yb = -BRUSH_RAD; yb <= BRUSH_RAD; yb++) {
-                    if (pow(xb, 2) + pow(yb, 2) > pow(BRUSH_RAD, 2)) continue;
-
-                    Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, currentParticle);
-                    Renderer::SetPixelAt(Renderer::newPixels, mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, currentParticle);
-                    SetVel(mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, rand()%5*((positive)?1:-1), GRAVITY);
-                }
+                Renderer::SetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, currentParticle);
+                Renderer::SetPixelAt(Renderer::newPixels, mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, currentParticle);
+                SetVel(mouseX/PIXEL_SIZE + xb, mouseY/PIXEL_SIZE + yb, rand()%5*((positive)?1:-1), GRAVITY);
             }
         }
+    }
+
+    // Debug info
+    if (Renderer::GetPixelAt(Renderer::ogPixels, mouseX/PIXEL_SIZE, mouseY/PIXEL_SIZE) != VOID) {
+        int xi = mouseX/PIXEL_SIZE;
+        int yi = mouseY/PIXEL_SIZE;
+
+        int xvel = GetVel(false, xi, yi);
+        int yvel = GetVel(true, xi, yi);
+
+        std::cout << "debug (" << xi << ", " << yi << ")" << std::endl;
+        std::cout << "veloc (" << xvel << ", " << yvel << ")" << std::endl;
     }
 }
