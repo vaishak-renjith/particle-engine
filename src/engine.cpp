@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <cmath>
 
 #include "engine.h"
 #include "renderer.h"
@@ -68,6 +69,14 @@ void Engine::HandleKeypress(SDL_KeyboardEvent e) {
         case SDLK_2:
             std::cout << "water" << std::endl;
             currentParticle = WATER;
+            break;
+        case SDLK_3:
+            std::cout << "stone" << std::endl;
+            currentParticle = STONE;
+            break;
+        case SDLK_4:
+            std::cout << "acid" << std::endl;
+            currentParticle = ACID;
             break;
         case SDLK_BACKSPACE:
             std::cout << "void" << std::endl;
@@ -221,6 +230,23 @@ void Engine::Loop() {
                 }
 
                 break;
+
+              case STONE:
+                break;
+
+              case ACID:
+                if (xvel == 0) { //ugly
+                if (AttemptMove(xi, yi, 0, 1, STONE, ACID)) {
+                    Renderer::SetPixelAt(Renderer::newPixels, xi, yi, VOID);
+                } else if (AttemptMove(xi, yi, +0, yvel, VOID, ACID)    || 
+                    AttemptMove(xi, yi, -1, 1, VOID, ACID)    ||
+                    AttemptMove(xi, yi, +1, 1, VOID, ACID)    ||
+                    AttemptMove(xi, yi, +1, 0, VOID, ACID)       ||
+                    AttemptMove(xi, yi, -1, 0, VOID, ACID))      {}
+                } else {
+                    AttemptMove(xi, yi, xvel, yvel, VOID, ACID);
+                }
+                
             }
         }
     }

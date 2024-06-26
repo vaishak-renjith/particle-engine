@@ -30,3 +30,5 @@ namespace Renderer {
 #define VOID (int)0x000000FF
 #define SAND (int)0x00FFFFFF
 #define WATER (int)0xFF0000FF
+#define STONE (int)0x808080FF
+#define ACID (int)0x34eb3aFF

@@ -1,4 +1,4 @@
-OS = LINUX
+OS = WINDOWS
 
 CC = g++
 CFLAGS = -Wall -Wextra -pedantic
