@@ -161,20 +161,37 @@ void FindMostAggressiveMove(int &aggXi, int &aggYi, bool isHorizontalSearch,
     }
 }
 
-bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type) {
+bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type, bool pure) {
     // find most aggressive placement
     int aggXi = xi, aggYi = yi;
-    FindMostAggressiveMove(aggXi, aggYi, true, xi, yi, xoff, yoff, condition);
-    FindMostAggressiveMove(aggXi, aggYi, false, xi, yi, xoff, yoff, condition);
+    if (!pure) {
+        FindMostAggressiveMove(aggXi, aggYi, true, xi, yi, xoff, yoff, condition);
+        FindMostAggressiveMove(aggXi, aggYi, false, xi, yi, xoff, yoff, condition);
 
-    // if most aggressive position is starting position, try something else
-    if (aggXi == xi && aggYi == yi) return false;
-    // skip if nothing is collided with, otherwise kill movement
-    if (!(xi+xoff == aggXi && yi+yoff == aggYi)) {
-        if (xoff != 0) {
-            std::cout << "x->0" << std::endl;
-            SetVel(xi, yi, 0, GetVel(true, xi, yi));
+        // if most aggressive position is starting position, try something else
+        if (aggXi == xi && aggYi == yi) return false;
+        // skip if nothing is collided with
+        if (!(xi+xoff == aggXi && yi+yoff == aggYi)) {
+            if (!Legal(xi+xoff, yi+yoff)) { // if boundary hit, then set velocity to 0
+                SetVel(xi, yi, 0, yoff);
+            } else { // otherwise, swap velocities
+                int xvel = GetVel(false, xi, yi);
+                int yvel = GetVel(true, xi, yi);
+
+                // this needs to be updated when i eventually make it so that skipping pixels is impossible
+                int xcvel = GetVel(false, xi+xoff, yi+yoff);
+                int ycvel = GetVel(true, xi+xoff, yi+yoff);
+
+                SetVel(xi, yi, xcvel, ycvel);
+                SetVel(xi+xoff, yi+yoff, xvel, yvel);
+            }
         }
+    } else {
+        if (!Legal(xi+xoff, yi+yoff)) return false;
+        if (Renderer::GetPixelAt(Renderer::newPixels, xi+xoff, yi+yoff) != condition) return false;
+
+        aggXi = xi+xoff;
+        aggYi = yi+yoff;
     }
 
     // move particle
@@ -187,6 +204,10 @@ bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int 
     SetVel(xi, yi, 0, 0);
 
     return true;
+}
+
+bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type) {
+    return AttemptMove(xi, yi, xoff, yoff, condition, type, false);
 }
 
 void Engine::Loop() {
@@ -205,29 +226,39 @@ void Engine::Loop() {
 
             switch (Renderer::GetPixelAt(Renderer::ogPixels, xi, yi)) {
               case WATER:
-                if (xvel == 0) {
-                if (AttemptMove(xi, yi, +0, yvel, VOID, WATER)    || 
-                    AttemptMove(xi, yi, -1, 1, VOID, WATER)    ||
-                    AttemptMove(xi, yi, +1, 1, VOID, WATER)    ||
-                    AttemptMove(xi, yi, +1, 0, VOID, WATER)       ||
-                    AttemptMove(xi, yi, -1, 0, VOID, WATER))      {}
-                } else {
-                    AttemptMove(xi, yi, xvel, yvel, VOID, WATER);
-                }
+                  // std::cout << "xvel: " << xvel << std::endl;
+                  // std::cout << "yvel: " << yvel << std::endl;
+                  if (xvel != 0) {
+                      AttemptMove(xi, yi, xvel, yvel, VOID, WATER);
+                  }
+                  else if (Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == VOID && (
+                      AttemptMove(xi, yi, 0, yvel, VOID, WATER)
+                  )) {}
+                  else if (Legal(xi, yi+1) && Renderer::GetPixelAt(Renderer::ogPixels, xi, yi+1) == WATER && (
+                      AttemptMove(xi, yi, -yvel, 0, VOID, WATER) ||
+                      AttemptMove(xi, yi, +yvel, 0, VOID, WATER)
+                  )) {}
+                  else if (
+                      AttemptMove(xi, yi, +1, yvel, VOID, WATER, true) ||
+                      AttemptMove(xi, yi, -1, yvel, VOID, WATER, true) ||
+                      AttemptMove(xi, yi, +0, yvel, VOID, WATER)       ||
+                      AttemptMove(xi, yi, -yvel, yvel, VOID, WATER)    ||
+                      AttemptMove(xi, yi, +yvel, yvel, VOID, WATER)
+                  ) {}
 
                 break;
 
               case SAND:
-                // std::cout << "xvel: " << xvel << std::endl;
-                // std::cout << "yvel: " << yvel << std::endl;
-
-                if (xvel == 0) {
-                if (AttemptMove(xi, yi, +0, yvel, VOID, SAND) ||
-                    AttemptMove(xi, yi, -1, 1, VOID, SAND)    ||
-                    AttemptMove(xi, yi, +1, 1, VOID, SAND))   {}
-                } else {
+                if (xvel != 0) {
                     AttemptMove(xi, yi, xvel, yvel, VOID, SAND);
                 }
+                else if (
+                    AttemptMove(xi, yi, +1, yvel, VOID, SAND, true) ||
+                    AttemptMove(xi, yi, -1, yvel, VOID, SAND, true) ||
+                    AttemptMove(xi, yi, +0, yvel, VOID, SAND)       ||
+                    AttemptMove(xi, yi, -yvel, yvel, VOID, SAND)    ||
+                    AttemptMove(xi, yi, +yvel, yvel, VOID, SAND)
+                ) {}
 
                 break;
 

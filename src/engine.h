@@ -23,7 +23,8 @@ namespace Engine {
     void SetVel(int xi, int yi, int xvel, int yvel);
 
 
-    bool AttemptMove( int xi, int yi, int xoff, int yoff, int condition, int type);
+    bool AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type, bool pure);
+    bool AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int type);
     bool Legal(int xi, int yi);
     void Loop();
 
