@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include "definitions.h"
 #include "renderer.h"
+#include "gui.h"
 
 SDL_Window* Renderer::window = nullptr;
 SDL_Renderer* Renderer::renderer = nullptr;
@@ -37,7 +38,7 @@ bool Renderer::Init() {
         }
     }
 
-    return true;
+    return GUI::Init(window, renderer);
 }
 
 void Renderer::Close() {

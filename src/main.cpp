@@ -6,6 +6,11 @@
 
 #include "renderer.h"
 #include "engine.h"
+#include "gui.h"
+
+#include "imgui.h"
+#include "imgui_impl_sdl2.h"
+#include "imgui_impl_opengl3.h"
 
 
 // CONSTANTS
@@ -23,6 +28,7 @@ bool init() {
 
 void close() {
     Renderer::Close();
+    GUI::Close();
 }
 
 int main() {
@@ -53,6 +59,7 @@ int main() {
                 case SDL_KEYDOWN:
                   Engine::HandleKeypress(e.key);
             }
+            ImGui_ImplSDL2_ProcessEvent(&e);
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -61,8 +68,9 @@ int main() {
         if (diff < delay) continue;
         last_update = now;
 
-        Engine::Loop();
-        Renderer::Render();
+        //Engine::Loop();
+        //Renderer::Render();
+        GUI::Display();
     }
 
     close();

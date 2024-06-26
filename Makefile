@@ -1,21 +1,25 @@
-OS = WINDOWS
+OS := WINDOWS
 
-CC = g++
-CFLAGS = -Wall -Wextra -pedantic
+CC := g++
+CFLAGS := -Wall -Wextra -pedantic
 
-SRC = $(wildcard src/*.cpp)
-OBJ = $(SRC:.cpp=.o)
+SRC := $(wildcard src/*.cpp) \
+       $(wildcard include/imgui/*.cpp) \
+       include/imgui/backends/imgui_impl_sdl2.cpp \
+	   include/imgui/backends/imgui_impl_sdlrenderer2.cpp \
+       include/imgui/backends/imgui_impl_opengl3.cpp 
 
+OBJ := $(SRC:.cpp=.o)
 
 ifeq ($(OS), WINDOWS)
-	DEL = del
-	SDL_INCLUDE = -I".\include"
-	SDL_LIB = -L".\lib" -lSDL2 -lSDL2main
-	TARGET = main.exe
+	DEL := del
+	SDL_INCLUDE := -I"./include" -I"./include/SDL2" -I"./include/imgui" -I"./include/imgui/backends"
+	SDL_LIB := -L"./lib" -lSDL2 -lSDL2main -lopengl32
+	TARGET := main.exe
 else
-	DEL = rm
-	SDL_LIB = -lSDL2 -lSDL2main
-	TARGET = main.elf
+	DEL := rm
+	SDL_LIB := -lSDL2 -lSDL2main
+	TARGET := main.elf
 endif
 
 # Default target
