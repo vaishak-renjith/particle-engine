@@ -1,9 +1,13 @@
 #include "definitions.h"
 #define SDL_MAIN_HANDLED
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <chrono>
 #include <iostream>
+
+#include <imgui.h>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_sdlrenderer2.h>
 
 #include "renderer.h"
 #include "engine.h"
@@ -31,6 +35,14 @@ int main() {
         return -1;
     }
 
+    // Init ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    ImGui_ImplSDL2_InitForSDLRenderer(Renderer::window, Renderer::renderer);
+    ImGui_ImplSDLRenderer2_Init(Renderer::renderer);
+
     SDL_Log("Application started successfully!");
 
     bool quit = false;
@@ -54,6 +66,9 @@ int main() {
                 case SDL_KEYDOWN:
                   Engine::HandleKeypress(e.key);
             }
+
+            
+            ImGui_ImplSDL2_ProcessEvent(&e);
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -63,7 +78,46 @@ int main() {
         last_update = now;
 
         Engine::Loop();
+        
+
+        ImGui_ImplSDLRenderer2_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::Begin("debug");
+        
+        if (ImGui::Button("Sand")) {
+            std::cout << "sand";
+            Engine::currentParticle = SAND;
+        }
+
+        if (ImGui::Button("Water")) {
+            std::cout << "water";
+            Engine::currentParticle = WATER;
+        }
+
+        if (ImGui::Button("Stone")) {
+            std::cout << "stone";
+            Engine::currentParticle = STONE;
+        }
+
+        if (ImGui::Button("Acid")) {
+            std::cout << "acid";
+            Engine::currentParticle = ACID;
+        }
+
+        ImGui::End();
+        
+        ImGui::Render();
+
         Renderer::Render();
+
+        //SDL_RenderClear(Renderer::renderer);
+
+        // Render ImGui
+        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), Renderer::renderer);
+
+        SDL_RenderPresent(Renderer::renderer);
     }
 
     close();

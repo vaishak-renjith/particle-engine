@@ -1,5 +1,5 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_video.h>
+#include <SDL.h>
+#include <SDL_video.h>
 #include "definitions.h"
 #include "renderer.h"
 
@@ -84,5 +84,5 @@ void Renderer::Render() {
 
     SDL_RenderClear(renderer); // Clear the renderer with the current drawing color
     SDL_RenderCopy(renderer, buffer, NULL, NULL);
-    SDL_RenderPresent(renderer);
+    //SDL_RenderPresent(renderer);
 }

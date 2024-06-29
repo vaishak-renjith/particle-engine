@@ -1,6 +1,6 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_events.h>
-#include <SDL2/SDL_keycode.h>
+#include <SDL.h>
+#include <SDL_events.h>
+#include <SDL_keycode.h>
 
 #include <cassert>
 #include <iostream>
@@ -226,7 +226,7 @@ bool Engine::AttemptMove(int xi, int yi, int xoff, int yoff, int condition, int 
                 // this needs to be updated when i eventually make it so that skipping pixels is impossible
                 int xcvel = GetVel(false, colXi, colYi);
                 int ycvel = GetVel(true, colXi, colYi);
-                std::cout << "vels: " << xcvel << " " << ycvel << std::endl;
+                //std::cout << "vels: " << xcvel << " " << ycvel << std::endl;
 
                 SetVel(xi, yi, xcvel, ycvel);
                 SetVel(colXi, colYi, xvel, yvel);

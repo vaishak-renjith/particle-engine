@@ -1,15 +1,15 @@
-OS = LINUX
+OS = WINDOWS
 
 CC = g++
 CFLAGS = -Wall -Wextra -pedantic
 
-SRC = $(wildcard src/*.cpp)
+SRC = $(wildcard src/*.cpp) $(wildcard imgui/*.cpp)
 OBJ = $(SRC:.cpp=.o)
 
 
 ifeq ($(OS), WINDOWS)
 	DEL = del
-	SDL_INCLUDE = -I".\include"
+	SDL_INCLUDE = -I".\include\SDL2" -Iinclude/imgui
 	SDL_LIB = -L".\lib" -lSDL2 -lSDL2main
 	TARGET = main.exe
 else
